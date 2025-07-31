@@ -16,7 +16,7 @@ public class TestClusterShard : TestKit
     public async Task ClusterController_Starts_ActorSystem_And_Handles_Messages()
     {
         var controller = new ClusterController();
-        await controller.Start(path: _pathToHoconFile);
+        await controller.Start(path: _pathToHoconFile, withDi: false);
 
         var region = controller.GetShardRegion();
 
@@ -29,22 +29,15 @@ public class TestClusterShard : TestKit
         await controller.Stop();
     }
 
-    // Hilfsmethode zum Zugriff auf private Felder (z. B. _actorSystem)
-    private static T GetPrivateField<T>(object instance, string fieldName)
-    {
-        var field = instance.GetType().GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return (T)field!.GetValue(instance)!;
-    }
-
     [Fact]
     public async Task ClusterController_Share_Information()
     {
         var logger = TestLogger.CreateLogger<ClusterController>();
         var controllerA = new ClusterController(logger);
-        await controllerA.Start(actorSystemName: "DriverCluster", path: _pathToHoconFile);
+        await controllerA.Start(actorSystemName: "DriverCluster", path: _pathToHoconFile, withDi: false);
 
         var controllerB = new ClusterController(logger);
-        await controllerB.Start(actorSystemName: "DriverCluster", path: _pathToHoconFile);
+        await controllerB.Start(actorSystemName: "DriverCluster", path: _pathToHoconFile, withDi: false);
 
         var regionA = controllerA.GetShardRegion();
         var regionB = controllerB.GetShardRegion();

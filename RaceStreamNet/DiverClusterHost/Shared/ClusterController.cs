@@ -7,7 +7,6 @@ using DiverClusterHost.Cluster;
 using Infrastructure.Cluster.Basis;
 using Infrastructure.General;
 using Serilog;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace DiverClusterHost.Shared;
 
@@ -17,6 +16,7 @@ public class ClusterController
     private readonly int _defaultSeedNode = 5000;         // Default port for the ActorSystem
     private readonly string _regionName = "driver";       // Name of the ShardRegion
     private IActorRef? _shardRegion;                      // Reference to the ShardRegion
+
     private readonly IServiceProvider? _serviceProvider;
     private readonly ILogger<ClusterController> _logger;
     private int Port { set; get; }
@@ -42,11 +42,13 @@ public class ClusterController
     public ClusterController(ILogger<ClusterController> logger)
     {
         _logger = logger;
+        Console.WriteLine("ClusterController ILogger");
     }
     public ClusterController(ILogger<ClusterController> logger, IServiceProvider sp)
     {
         _logger = logger;
         _serviceProvider = sp;
+        Console.WriteLine("ClusterController ILogger and sp");
     }
 
     private async Task<Config> LoadHoconFile(string path, string actorName)
@@ -82,7 +84,7 @@ public class ClusterController
         return actorSystemSetup;
     }
 
-    public async Task Start(string actorSystemName = "DriverClusterNode", string? path = null, bool withDi = false)
+    public async Task Start(string actorSystemName = "DriverClusterNode", string? path = null, bool withDi = true)
     {
         var hoconConfig = await LoadHoconFile(path ?? _defaultHoconFilePath, actorSystemName);
 
