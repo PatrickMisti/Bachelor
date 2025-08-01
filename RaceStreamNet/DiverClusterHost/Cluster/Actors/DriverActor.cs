@@ -1,7 +1,7 @@
 ﻿using Akka.Actor;
 using Infrastructure.General;
 
-namespace DiverClusterHost.Cluster;
+namespace DiverClusterHost.Cluster.Actors;
 
 public class DriverActor : ReceiveActor
 {

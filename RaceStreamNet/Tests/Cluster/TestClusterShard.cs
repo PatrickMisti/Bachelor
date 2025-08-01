@@ -1,6 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.TestKit.Xunit2;
-using DiverClusterHost.Shared;
+using DiverClusterHost.Cluster;
 using Infrastructure.General;
 using Serilog;
 using Tests.Utilities;

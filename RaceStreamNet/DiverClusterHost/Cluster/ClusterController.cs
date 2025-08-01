@@ -3,14 +3,17 @@ using Akka.Actor.Setup;
 using Akka.Cluster.Sharding;
 using Akka.Configuration;
 using Akka.DependencyInjection;
-using DiverClusterHost.Cluster;
+using DiverClusterHost.Cluster.Actors;
 using Infrastructure.Cluster.Basis;
+using Infrastructure.Cluster.Config;
+using Infrastructure.Cluster.Interfaces;
 using Infrastructure.General;
 using Serilog;
+using System.IO;
 
-namespace DiverClusterHost.Shared;
+namespace DiverClusterHost.Cluster;
 
-public class ClusterController
+public class ClusterController : IClusterController
 {
     private ActorSystem? _actorSystem;
     private readonly int _defaultSeedNode = 5000;         // Default port for the ActorSystem
@@ -19,6 +22,8 @@ public class ClusterController
 
     private readonly IServiceProvider? _serviceProvider;
     private readonly ILogger<ClusterController> _logger;
+
+    private readonly ClusterMembershipListener? _membershipListener;
     private int Port { set; get; }
 
     private readonly string _defaultHoconFilePath = "akka.conf";
@@ -39,35 +44,14 @@ public class ClusterController
         return factory.CreateLogger<ClusterController>();
     }
 
-    public ClusterController(ILogger<ClusterController> logger)
+    public ClusterController(ILogger<ClusterController> logger) : this(logger, null!)
     {
-        _logger = logger;
-        Console.WriteLine("ClusterController ILogger");
     }
+
     public ClusterController(ILogger<ClusterController> logger, IServiceProvider sp)
     {
         _logger = logger;
         _serviceProvider = sp;
-        Console.WriteLine("ClusterController ILogger and sp");
-    }
-
-    private async Task<Config> LoadHoconFile(string path, string actorName)
-    {
-        _logger.LogDebug("Loading HOCON file and Checking Port ...");
-        Port = PortChecker.CheckPort(_defaultSeedNode);
-        _logger.LogDebug("Found free port: {p}", Port);
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"HOCON file not found at path: {path}");
-
-        // Load the HOCON file and replace placeholders
-        _logger.LogDebug("Loading Hocon file ...");
-        var hoconTemplate = await File.ReadAllTextAsync(path);
-        var hoconWithPort = hoconTemplate
-            .Replace("{{PORT}}", Port.ToString())
-            .Replace("{{SEED_PORT}}", _defaultSeedNode.ToString())
-            .Replace("{{CLUSTER_NAME}}", actorName);
-
-        return ConfigurationFactory.ParseString(hoconWithPort);
     }
 
     private ActorSystemSetup AddActorSystemToDi(Config config)
@@ -86,27 +70,21 @@ public class ClusterController
 
     public async Task Start(string actorSystemName = "DriverClusterNode", string? path = null, bool withDi = true)
     {
-        var hoconConfig = await LoadHoconFile(path ?? _defaultHoconFilePath, actorSystemName);
-
         _logger.LogInformation("Starting ActorSystem: {ActorSystemName} on Port: {Port} Seed-Node-Port: {Seed}",
             actorSystemName, Port, _defaultSeedNode);
 
-        _actorSystem = withDi 
-            ? ActorSystem.Create(actorSystemName, AddActorSystemToDi(hoconConfig)) 
-            : ActorSystem.Create(actorSystemName, hoconConfig);
-
-        var resolver = withDi ? DependencyResolver.For(_actorSystem) : null;
-
-        var log = LoggerFactory.Create(x => x.AddSerilog()).CreateLogger<DriverActor>();
+        var (resolver, log) = await RegisterAllActors(withDi, actorSystemName, path);
+        
         // Start ShardRegion
-        _shardRegion = await ClusterSharding.Get(_actorSystem).StartAsync(
+        _shardRegion = await ClusterSharding.Get(_actorSystem!).StartAsync(
             typeName: _regionName,
             entityProps: resolver is null
-                ? Props.Create(() => new DriverActor(log))
-                : resolver.Props<DriverActor>(), // Use DI if available
-            settings: ClusterShardingSettings.Create(_actorSystem), // Sharding settings
-            messageExtractor: new DriverMessageExtractor() // Message extractor for the ShardRegion
+                ? Props.Create(() => new DriverActor(log.CreateLogger<DriverActor>()))
+                : resolver.Props<DriverActor>(),                       // Use DI if available
+            settings: ClusterShardingSettings.Create(_actorSystem),    // Sharding settings
+            messageExtractor: new DriverMessageExtractor()             // Message extractor for the ShardRegion
         );
+
         _logger.LogInformation("ShardRegion '{RegionName}' started. Akka-System ready.",
             _regionName);
     }
@@ -118,6 +96,36 @@ public class ClusterController
             return null!;
         }
         return _shardRegion;
+    }
+
+    private async Task<(DependencyResolver? resolver, ILoggerFactory factory)> RegisterAllActors(bool withDi, string actorSystemName, string? path)
+    {
+        var hoconConfig = await AkkaConfigLoader.LoadAsync(
+            path ?? _defaultHoconFilePath,
+            Port = PortChecker.CheckPort(_defaultSeedNode),
+            _defaultSeedNode,
+            actorSystemName);
+
+        var log = LoggerFactory.Create(x => x.AddSerilog());
+        DependencyResolver? resolver = null;
+        Props? memberProps = null;
+
+        if (withDi)
+        {
+            _actorSystem = ActorSystem.Create(actorSystemName, AddActorSystemToDi(hoconConfig));
+            resolver = DependencyResolver.For(_actorSystem);
+
+            memberProps = resolver.Props<ClusterMembershipListener>();
+        }
+
+        _actorSystem ??= ActorSystem.Create(actorSystemName, hoconConfig);
+        memberProps ??= Props.Create(() => new ClusterMembershipListener(log.CreateLogger<ClusterMembershipListener>()));
+
+        // Register in actor_system
+
+        _actorSystem?.ActorOf(memberProps, "ClusterMemberListener");
+
+        return (resolver,log);
     }
 
     public async Task Stop()
