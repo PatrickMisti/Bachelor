@@ -1,6 +1,5 @@
 ﻿using Akka.Actor;
 using Akka.Cluster;
-using Infrastructure.Cluster.Interfaces;
 
 namespace DiverShardHost.Cluster.Actors;
 

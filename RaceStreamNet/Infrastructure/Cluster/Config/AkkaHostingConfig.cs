@@ -16,7 +16,7 @@ public class AkkaHostingConfig
     // Roles for the cluster nodes
     public List<string>? Roles { get; set; }
     // Default role for the cluster nodes
-    public string? Role { get; set; }
+    public string Role { get; set; } = string.Empty;
     // Shard name for the cluster
-    public string? ShardName { get; set; }
+    public string ShardName { get; set; } = "driver";
 }

@@ -1,14 +1,11 @@
 using Akka.Cluster.Hosting;
 using Akka.Hosting;
-using Akka.Logger.Serilog;
-using Akka.Remote.Hosting;
 using DiverShardHost.Cluster.Actors;
 using Infrastructure.Cluster.Base;
 using Infrastructure.Cluster.Config;
 using Infrastructure.General;
 using Serilog;
 using Serilog.Events;
-using LogLevel = Akka.Event.LogLevel;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -27,28 +24,15 @@ builder.Logging.AddSerilog(Log.Logger);
 var akkaHc = new AkkaHostingConfig
 {
     Port = 5000,
-    Role = "backend",
-    ShardName = "driver",
+    Role = "backend"
 };
 
 // Configure Akka.NET
-builder.Services.AddAkka(akkaHc.ClusterName, (config, setup) =>
+builder.Services.AddAkka(akkaHc.ClusterName, config =>
 {
     config
-        .WithRemoting(port: akkaHc.Port, hostname: akkaHc.Hostname)
-        .WithClustering(new ClusterOptions
-        {
-            SeedNodes = akkaHc.SeedNodes,
-            Roles = [akkaHc.Role],
-        })
-        .ConfigureLoggers(logger =>
-        {
-            logger.LogLevel = LogLevel.InfoLevel;
-            logger.ClearLoggers();
-            // Logging.GetLogger(context.System, "echo")
-            // to use the logger in the actor echo is actor
-            logger.AddLogger<SerilogLogger>();
-        })
+        .UseRemoteCluster(akkaHc)
+        .UseAkkaLogger()
         .WithShardRegion<DriverData>(
             typeName: akkaHc.ShardName,
             entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActor>(),
