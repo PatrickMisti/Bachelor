@@ -1,30 +1,31 @@
 ﻿using Akka.Actor;
+using Akka.Event;
 using Infrastructure.General;
 
-namespace DiverClusterHost.Cluster.Actors;
+namespace DiverShardHost.Cluster.Actors;
 
 public class DriverActor : ReceiveActor
 {
-    private readonly ILogger<DriverActor> _logger;
+    //private readonly ILoggingAdapter _logger = Logging.GetLogger(Context.System, nameof(DriverActor));
+    private readonly ILoggingAdapter _logger = Context.GetLogger();
     private DriverData? _driverData;
 
-    public DriverActor(ILogger<DriverActor> logger)
+    public DriverActor()
     {
-        _logger = logger;
-        _logger.LogInformation("DriverActor constructor");
+        _logger.Info("DriverActor constructor");
         // Hier können Nachrichten empfangen und verarbeitet werden
         Receive<string>(message => HandleMessage(message));
         Receive<DriverData>(m =>
         {
-            _logger.LogWarning("hallo not functsdafasdflökjlkasjdflkjasdklfjökasjöldfjlökasdjl");
+            _logger.Warning("hallo not functsdafasdflökjlkasjdflkjasdklfjökasjöldfjlökasdjl");
             if (_driverData is null)
             {
-                _logger.LogInformation("Create new DriverActor");
+                _logger.Info("Create new DriverActor");
                 _driverData = m;
             }
             else if (_driverData is not null)
             {
-                _logger.LogInformation("update worker on ip: {p}", Context.Self.Path.Address);
+                _logger.Info("update worker on ip: {p}", Context.Self.Path.Address);
             }
             Sender.Tell($"Received driver with ID {m.DriverId}");
         });

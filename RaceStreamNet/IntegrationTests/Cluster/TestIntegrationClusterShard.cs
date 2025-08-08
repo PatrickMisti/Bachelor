@@ -2,9 +2,8 @@
 using Akka.Cluster.Sharding;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using Infrastructure.Cluster.Basis;
+using Infrastructure.Cluster.Base;
 using Infrastructure.General;
-using System;
 using Xunit;
 
 namespace IntegrationTests.Cluster;
@@ -22,14 +21,14 @@ public class TestIntegrationClusterShard : TestKit
             akka {{
               actor.provider = cluster
               remote.dot-netty.tcp {{
-                hostname = ""127.0.0.1""
+                hostname = ""localhost""
                 port = 0
               }}
-              cluster.seed-nodes = [""akka.tcp://DriverClusterNode@127.0.0.1:5000""]
+              cluster.seed-nodes = [""akka.tcp://cluster-system@localhost:5000""]
               cluster.roles = [""frontend""]
             }}").WithFallback(ClusterSharding.DefaultConfig());
 
-        _proxySystem = ActorSystem.Create("DriverClusterNode", hocon);
+        _proxySystem = ActorSystem.Create("cluster-system", hocon);
 
         // Proxy zur echten ShardRegion "driver"
         _proxyRegion = await ClusterSharding.Get(_proxySystem).StartProxyAsync(

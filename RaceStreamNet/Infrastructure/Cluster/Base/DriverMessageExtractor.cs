@@ -1,7 +1,7 @@
 ﻿using Akka.Cluster.Sharding;
 using Infrastructure.General;
 
-namespace Infrastructure.Cluster.Basis;
+namespace Infrastructure.Cluster.Base;
 
 public class DriverMessageExtractor : IMessageExtractor
 {

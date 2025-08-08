@@ -1,18 +1,11 @@
-﻿using Akka.Actor;
-using Akka.Actor.Setup;
-using Akka.Cluster.Sharding;
-using Akka.Configuration;
-using Akka.DependencyInjection;
-using DiverClusterHost.Cluster.Actors;
-using Infrastructure.Cluster.Basis;
-using Infrastructure.Cluster.Config;
-using Infrastructure.Cluster.Interfaces;
-using Infrastructure.General;
-using Serilog;
-using System.IO;
+﻿# ClusterShard
 
-namespace DiverClusterHost.Cluster;
+## V1 Di + Akka.net
 
+Somit wird das Aktorensystem in die DI gelegt.
+
+ClusterController.cs
+```c#
 public class ClusterController : IClusterController
 {
     private ActorSystem? _actorSystem;
@@ -141,3 +134,44 @@ public class ClusterController : IClusterController
         _logger.LogInformation("ActorSystem shutdown complete.");
     }
 }
+```
+
+um den Controller in die Di zu legen muss in der Startup.cs
+
+```c#
+var builder = Host.CreateApplicationBuilder(args);
+
+// Remove Microsoft Logger
+builder.Logging.ClearProviders();
+
+// Read Serilog from appsettings.json
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration) 
+    .CreateLogger();
+
+// set Serilog active
+builder.Logging.AddSerilog(Log.Logger);
+
+builder.Services.AddSingleton<IClusterController, ClusterController>();
+
+// needed for DI and Akka.net
+builder.Services.AddTransient<DriverActor>();
+builder.Services.AddTransient<ClusterMembershipListener>();
+
+
+var host = builder.Build();
+
+var controller = (ClusterController)host.Services.GetRequiredService<IClusterController>();
+await controller.Start();
+
+host.Run();
+```
+
+## V2 Hosting 
+Vorteil man start sich den Controller da man es gleich im Startup alles 
+eingibt und man somit keine HOCON file laden muss.
+
+### Conclusion
+
+Besser für DriverShardHost sicher Hosting da das Subprojekt
+nur sich um den Shard handln soll und sonst nichts

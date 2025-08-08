@@ -1,31 +1,64 @@
-using DiverClusterHost.Cluster;
-using DiverClusterHost.Cluster.Actors;
-using Infrastructure.Cluster.Interfaces;
+using Akka.Cluster.Hosting;
+using Akka.Hosting;
+using Akka.Logger.Serilog;
+using Akka.Remote.Hosting;
+using DiverShardHost.Cluster.Actors;
+using Infrastructure.Cluster.Base;
+using Infrastructure.Cluster.Config;
+using Infrastructure.General;
 using Serilog;
+using Serilog.Events;
+using LogLevel = Akka.Event.LogLevel;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Remove Microsoft Logger
-builder.Logging.ClearProviders();
-
-// Read Serilog from appsettings.json
+// Serilog init
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration) 
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
     .CreateLogger();
 
-// set Serilog active
+builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger);
 
-builder.Services.AddSingleton<IClusterController, ClusterController>();
+// Akka.NET hosting configuration
+var akkaHc = new AkkaHostingConfig
+{
+    Port = 5000,
+    Role = "backend",
+    ShardName = "driver",
+};
 
-// needed for DI and Akka.net
-builder.Services.AddTransient<DriverActor>();
-builder.Services.AddTransient<ClusterMembershipListener>();
+// Configure Akka.NET
+builder.Services.AddAkka(akkaHc.ClusterName, (config, setup) =>
+{
+    config
+        .WithRemoting(port: akkaHc.Port, hostname: akkaHc.Hostname)
+        .WithClustering(new ClusterOptions
+        {
+            SeedNodes = akkaHc.SeedNodes,
+            Roles = [akkaHc.Role],
+        })
+        .ConfigureLoggers(logger =>
+        {
+            logger.LogLevel = LogLevel.InfoLevel;
+            logger.ClearLoggers();
+            // Logging.GetLogger(context.System, "echo")
+            // to use the logger in the actor echo is actor
+            logger.AddLogger<SerilogLogger>();
+        })
+        .WithShardRegion<DriverData>(
+            typeName: akkaHc.ShardName,
+            entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActor>(),
+            messageExtractor: new DriverMessageExtractor(),
+            shardOptions: new ShardOptions
+            {
+                Role = akkaHc.Role,
+                PassivateIdleEntityAfter = TimeSpan.FromMinutes(1)
+            });
+});
 
-
-var host = builder.Build();
-
-var controller = (ClusterController)host.Services.GetRequiredService<IClusterController>();
-await controller.Start();
-
-host.Run();
+var app = builder.Build();
+app.Run();

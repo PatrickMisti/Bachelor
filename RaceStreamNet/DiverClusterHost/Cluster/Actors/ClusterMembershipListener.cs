@@ -2,7 +2,7 @@
 using Akka.Cluster;
 using Infrastructure.Cluster.Interfaces;
 
-namespace DiverClusterHost.Cluster.Actors;
+namespace DiverShardHost.Cluster.Actors;
 
 public class ClusterMembershipListener : ReceiveActor
 {
