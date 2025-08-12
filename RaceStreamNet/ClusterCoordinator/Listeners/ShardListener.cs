@@ -11,6 +11,7 @@ public class ShardListener : ReceiveActor
     private readonly ILoggingAdapter _logger = Context.GetLogger();
     private static string BackendRole => "backend";
     private readonly IActorRef _controller;
+    private ICancelable? _debounceTask;
 
     private readonly HashSet<Address> _activeBackends = new();
 
@@ -77,11 +78,26 @@ public class ShardListener : ReceiveActor
         });
     }
 
+    // Send the current count of active backends to the controller
     private void SendCountUpdate()
     {
         var count = _activeBackends.Count;
         _logger.Info("Sending shard count update: {0}", count);
         _controller.Tell(new ShardCountUpdateMessage(count));
+    }
+
+    // debounced version to avoid flooding the controller with updates
+    private void SendCountUpdateDebounced()
+    {
+        // Cancel any existing debounce task
+        _debounceTask?.Cancel();
+        // Schedule a new debounce task
+        _debounceTask = Context.System.Scheduler.ScheduleTellOnceCancelable(
+            delay: TimeSpan.FromMilliseconds(200),
+            receiver: _controller,
+            message: new ShardCountUpdateMessage(_activeBackends.Count),
+            sender: Self
+        );
     }
 
     protected override void PreStart()
