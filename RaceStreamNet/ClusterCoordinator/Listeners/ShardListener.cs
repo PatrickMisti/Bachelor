@@ -9,54 +9,79 @@ namespace ClusterCoordinator.Listeners;
 public class ShardListener : ReceiveActor
 {
     private readonly ILoggingAdapter _logger = Context.GetLogger();
-    private readonly string _backendRole = "backend";
+    private static string BackendRole => "backend";
     private readonly IActorRef _controller;
 
-    private int _count;
     private readonly HashSet<Address> _activeBackends = new();
 
 
-    public ShardListener(IRequiredActor<ClusterController> controller)
+    public ShardListener(IActorRef controller)
     {
-        _controller = controller.ActorRef;
+        _controller = controller;
 
+        HandleClusterEvents();
+    }
+
+
+    private void HandleClusterEvents()
+    {
         Receive<ClusterEvent.MemberUp>(msg =>
         {
-            if (!msg.Member.HasRole(_backendRole)) return;
-
-            var address = msg.Member.Address;
-            if (_activeBackends.Add(address))
+            if (msg.Member.HasRole(BackendRole) && _activeBackends.Add(msg.Member.Address))
             {
-                _count++;
-                _logger.Info("Backend joined: {0} | Online Backends: {1}", address, _activeBackends.Count);
-                _controller.Tell(new ShardCountUpdateMessage(_count));
+                _logger.Info("Backend joined: {0} | Online Backends: {1}", msg.Member.Address, _activeBackends.Count);
+                SendCountUpdate();
             }
         });
 
         Receive<ClusterEvent.MemberRemoved>(msg =>
         {
-            var address = msg.Member.Address;
-            if (_activeBackends.Remove(address))
+            if (_activeBackends.Remove(msg.Member.Address))
             {
-                _count--;
-                _logger.Warning("Backend left: {0} | Online Backends: {1}", address, _activeBackends.Count);
-                _controller.Tell(new ShardCountUpdateMessage(_count));
+                _logger.Warning("Backend removed: {0} | Online Backends: {1}", msg.Member.Address, _activeBackends.Count);
+                SendCountUpdate();
+            }
+        });
+
+        Receive<ClusterEvent.UnreachableMember>(msg =>
+        {
+            if (msg.Member.HasRole(BackendRole) && _activeBackends.Remove(msg.Member.Address))
+            {
+                _logger.Warning("Backend unreachable: {0} | Online Backends: {1}", msg.Member.Address, _activeBackends.Count);
+                SendCountUpdate();
+            }
+        });
+
+        Receive<ClusterEvent.ReachableMember>(msg =>
+        {
+            if (msg.Member.HasRole(BackendRole) && msg.Member.Status == MemberStatus.Up && _activeBackends.Add(msg.Member.Address))
+            {
+                _logger.Info("Backend reachable again: {0} | Online Backends: {1}", msg.Member.Address, _activeBackends.Count);
+                SendCountUpdate();
             }
         });
 
         Receive<ClusterEvent.CurrentClusterState>(state =>
         {
+            _activeBackends.Clear();
+
             var backends = state.Members
-                .Where(m => m.HasRole(_backendRole) && m.Status == MemberStatus.Up)
+                .Where(m => m.HasRole(BackendRole) && m.Status == MemberStatus.Up)
                 .Select(m => m.Address);
 
             foreach (var address in backends)
                 _activeBackends.Add(address);
 
-            _count = _activeBackends.Count();
             _logger.Info("Cluster state initialized. Online Backends: {0}", _activeBackends.Count);
-            _controller.Tell(new ShardCountUpdateMessage(_count));
+            SendCountUpdate();
         });
+    }
+
+    private void SendCountUpdate()
+    {
+        var count = _activeBackends.Count;
+        _logger.Info("Sending shard count update: {0}", count);
+        _controller.Tell(new ShardCountUpdateMessage(count));
     }
 
     protected override void PreStart()
@@ -69,7 +94,8 @@ public class ShardListener : ReceiveActor
             .Subscribe(
                 Self, 
                 ClusterEvent.SubscriptionInitialStateMode.InitialStateAsSnapshot,
-            typeof(ClusterEvent.IMemberEvent));
+            typeof(ClusterEvent.IMemberEvent),
+                typeof(ClusterEvent.IReachabilityEvent));
     }
 
     protected override void PostStop()

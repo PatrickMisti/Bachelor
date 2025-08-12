@@ -39,13 +39,15 @@ public static class AkkaBootstrapExtension
                     singletonName: akkaHc.Role,
                     propsFactory: (_, _, resolver) => resolver.Props<ClusterController>(),
                     options: new ClusterSingletonOptions { Role = akkaHc.Role }
-                ).WithActors((system, registry, resolver) =>
-                {
-                    var shardMonitorProps = resolver.Props<ShardListener>();
-                    var shardMonitorActor = system.ActorOf(shardMonitorProps, ShardMonitorControllerName);
+                );
+            // Because of supervisor strategy, we need to register the ShardListener
+            //).WithActors((system, registry, resolver) =>
+            //{
+            //    var shardMonitorProps = resolver.Props<ShardListener>();
+            //    var shardMonitorActor = system.ActorOf(shardMonitorProps, ShardMonitorControllerName);
 
-                    registry.Register<ShardListener>(shardMonitorActor);
-                });
+            //    registry.Register<ShardListener>(shardMonitorActor);
+            //});
         });
 
         return sp;
