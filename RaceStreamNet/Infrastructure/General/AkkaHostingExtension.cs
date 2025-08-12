@@ -4,6 +4,12 @@ using Akka.Hosting;
 using Akka.Logger.Serilog;
 using Akka.Remote.Hosting;
 using Infrastructure.Cluster.Config;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using LogLevel = Akka.Event.LogLevel;
+using Serilog;
+using Serilog.Events;
 
 namespace Infrastructure.General;
 
@@ -37,6 +43,18 @@ public static class AkkaHostingExtension
             // to use the logger in the actor echo is actor
             logger.AddLogger<SerilogLogger>();
         });
+
+        return builder;
+    }
+
+    public static IHostApplicationBuilder CreateLoggingAdapter(this IHostApplicationBuilder builder)
+    {
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration)
+            .CreateLogger();
+
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSerilog(Log.Logger);
 
         return builder;
     }

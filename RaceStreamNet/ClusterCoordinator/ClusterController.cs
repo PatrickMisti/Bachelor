@@ -12,23 +12,39 @@ public class ClusterController : ReceivePersistentActor
     private readonly ILoggingAdapter _logger = Context.GetLogger();
 
     private IActorRef? _shardRef;
-    private bool _hasShardRegion = false;
+    private bool _hasShardRegion;
+    private Dictionary<string, List<IActorRef>> _actorBag;
 
     public ClusterController()
     {
         _logger.Info("ClusterController started");
+        _hasShardRegion = false;
+        _actorBag = new();
 
-        
+        HandleCommands();
+        HandleRecovery();
+    }
 
+    private void HandleCommands()
+    {
         Command<RegisterShardResponse>(msg =>
         {
             // todo error handling
             // Handle the response from the shard registration
-            Persist(new RegisteredShard(msg.ShardRef!.Path.ToString()), e =>
+            /*Persist(new RegisteredShard(msg.ShardRef!.Path.ToString()), e =>
             {
                 _shardRef = msg.ShardRef;
                 Context.Watch(_shardRef);
                 _logger.Info("Shard registered: {Path}", _shardRef.Path);
+            });*/
+        });
+
+        Command<ShardCountUpdateMessage>(msg =>
+        {
+            Persist(msg, e =>
+            {
+                _hasShardRegion = msg.Count > 0;
+                _logger.Info("Is ShardRegion register {0}", _hasShardRegion);
             });
         });
 
@@ -40,33 +56,13 @@ public class ClusterController : ReceivePersistentActor
                 _shardRef = null;
             }
         });
-
-        Command<ClusterEvent.MemberUp>(msg =>
-        {
-            if (msg.Member.HasRole("backend"))
-            {
-                _logger.Info("Member up with role = {Role}, IP = {Address}", msg.Member.Roles, msg.Member.Address);
-            }
-        });
-
-        Command<ShardCountUpdateMessage>(msg =>
-        {
-            Persist(msg, e =>
-            {
-                _hasShardRegion = msg.Count < 0;
-                _logger.Debug("Is ShardRegion register {0}", _hasShardRegion);
-            });
-        });
-
-        HandleRecovery();
     }
-
 
     private void HandleRecovery()
     {
         Recover<ShardCountUpdateMessage>(msg =>
         {
-            _hasShardRegion = msg.Count < 0;
+            _hasShardRegion = msg.Count > 0;
             _logger.Debug("Recover shard {0}", _hasShardRegion);
         });
 

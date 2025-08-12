@@ -1,28 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Akka.Actor;
+﻿using Akka.Actor;
 using Akka.Cluster;
 using Akka.Event;
 using Akka.Hosting;
-using Akka.Persistence;
 using Infrastructure.Cluster.Messages;
 
-namespace ClusterCoordinator;
+namespace ClusterCoordinator.Listeners;
 
-public class ShardMonitorController : ReceiveActor
+public class ShardListener : ReceiveActor
 {
     private readonly ILoggingAdapter _logger = Context.GetLogger();
     private readonly string _backendRole = "backend";
     private readonly IActorRef _controller;
 
-    private int _count = 0;
+    private int _count;
     private readonly HashSet<Address> _activeBackends = new();
 
 
-    public ShardMonitorController(IRequiredActor<ClusterController> controller)
+    public ShardListener(IRequiredActor<ClusterController> controller)
     {
         _controller = controller.ActorRef;
 
@@ -68,17 +62,19 @@ public class ShardMonitorController : ReceiveActor
     protected override void PreStart()
     {
         base.PreStart();
-        _logger.Debug("ShardMonitorController PreStart");
+        _logger.Debug("ShardListener PreStart");
 
         // Cluster Subscription
-        Cluster.Get(Context.System).Subscribe(Self, ClusterEvent.SubscriptionInitialStateMode.InitialStateAsEvents,
-            typeof(ClusterEvent.IMemberEvent),
-            typeof(ClusterEvent.CurrentClusterState));
+        Cluster.Get(Context.System)
+            .Subscribe(
+                Self, 
+                ClusterEvent.SubscriptionInitialStateMode.InitialStateAsSnapshot,
+            typeof(ClusterEvent.IMemberEvent));
     }
 
     protected override void PostStop()
     {
-        _logger.Debug("ShardMonitorController PostStop");
+        _logger.Debug("ShardListener PostStop");
 
         Cluster.Get(Context.System).Unsubscribe(Self);
         base.PostStop();
