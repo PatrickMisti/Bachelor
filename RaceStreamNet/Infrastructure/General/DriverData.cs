@@ -1,4 +1,6 @@
-﻿namespace Infrastructure.General;
+﻿using Infrastructure.Models;
+
+namespace Infrastructure.General;
 
 public sealed class DriverData
 {

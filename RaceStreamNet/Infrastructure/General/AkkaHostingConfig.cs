@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Cluster.Config;
+﻿namespace Infrastructure.General;
 
 public class AkkaHostingConfig
 {

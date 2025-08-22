@@ -2,11 +2,12 @@
 using Akka.Cluster.Sharding;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using Infrastructure.Cluster.Base;
-using Infrastructure.General;
+using Infrastructure.Models;
+using Infrastructure.Shard.Messages;
+using Infrastructure.Testing;
 using Xunit;
 
-namespace IntegrationTests.Cluster;
+namespace IntegrationTests.ShardRegion;
 
 public class TestIntegrationClusterShard : TestKit
 {
@@ -14,7 +15,8 @@ public class TestIntegrationClusterShard : TestKit
     private ActorSystem? _proxySystem;
     private IActorRef? _proxyRegion;
 
-    [Fact]
+    // Only run this when service is running
+    //[Fact]
     public async Task Should_Send_DriverData_Through_Proxy()
     {
         var hocon = ConfigurationFactory.ParseString($@"
@@ -24,7 +26,7 @@ public class TestIntegrationClusterShard : TestKit
                 hostname = ""localhost""
                 port = 0
               }}
-              cluster.seed-nodes = [""akka.tcp://cluster-system@localhost:5000""]
+              cluster.seed-nodes = [""akka.tcp://cluster-system@localhost:5000"",""akka.tcp://cluster-system@localhost:6000""]
               cluster.roles = [""frontend""]
             }}").WithFallback(ClusterSharding.DefaultConfig());
 
@@ -34,20 +36,30 @@ public class TestIntegrationClusterShard : TestKit
         _proxyRegion = await ClusterSharding.Get(_proxySystem).StartProxyAsync(
             typeName: "driver",
             role: string.Empty, // oder null, falls ohne Einschränkung
-            messageExtractor: new DriverMessageExtractor()
+            messageExtractor: new DriverMessageExtractorTest()
         );
 
 
-        var msg = new DriverData
-        {
-            DriverId = "Ver"
-        };
-        var response = await _proxyRegion.Ask<string>(msg); // Antwort geht an Probe
+        var msg = new UpdateDriverTelemetry(
+            DriverId: "Ver",
+            LapNumber: 12,
+            PositionOnTrack: 3,
+            Speed: 278.5,
+            DeltaToLeader: 1.234,
+            TyreLife: 10,
+            CurrentTyreCompound: TyreCompound.Soft,
+            PitStops: 1,
+            LastLapTime: TimeSpan.FromSeconds(92.345),
+            Sector1Time: TimeSpan.FromSeconds(29.1),
+            Sector2Time: TimeSpan.FromSeconds(31.2),
+            Sector3Time: TimeSpan.FromSeconds(32.0),
+            Timestamp: DateTime.UtcNow);
+
+        var response = await _proxyRegion.Ask<string>(msg);
 
         Assert.NotNull(response);
         Assert.Contains("Ver", response);
 
-        Console.WriteLine("Output from actor is");
         // z. B. Antwortprüfung mit ReceiveTimeout o. Ä.
         await Task.Delay(1000);
 

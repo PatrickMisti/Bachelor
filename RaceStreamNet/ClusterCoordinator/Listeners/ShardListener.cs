@@ -78,8 +78,11 @@ public class ShardListener : ReceiveActor
         });
     }
 
+    private void SendCountUpdate() => SendCountUpdateDebounced();
+
+
     // Send the current count of active backends to the controller
-    private void SendCountUpdate()
+    private void SendCountUpdateWithoutDebounced()
     {
         var count = _activeBackends.Count;
         _logger.Info("Sending shard count update: {0}", count);
@@ -89,6 +92,7 @@ public class ShardListener : ReceiveActor
     // debounced version to avoid flooding the controller with updates
     private void SendCountUpdateDebounced()
     {
+        _logger.Info("Debouncing shard count update");
         // Cancel any existing debounce task
         _debounceTask?.Cancel();
         // Schedule a new debounce task

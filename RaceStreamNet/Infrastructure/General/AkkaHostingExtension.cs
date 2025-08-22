@@ -1,15 +1,11 @@
 ﻿using Akka.Cluster.Hosting;
-using Akka.Event;
 using Akka.Hosting;
 using Akka.Logger.Serilog;
 using Akka.Remote.Hosting;
-using Infrastructure.Cluster.Config;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LogLevel = Akka.Event.LogLevel;
 using Serilog;
-using Serilog.Events;
 
 namespace Infrastructure.General;
 

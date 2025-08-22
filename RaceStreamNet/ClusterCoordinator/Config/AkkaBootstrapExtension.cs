@@ -2,7 +2,6 @@
 using Akka.Hosting;
 using Akka.Persistence.Sql.Hosting;
 using ClusterCoordinator.Listeners;
-using Infrastructure.Cluster.Config;
 using Infrastructure.General;
 
 namespace ClusterCoordinator.Config;

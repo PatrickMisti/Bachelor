@@ -1,21 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.General;
-
-public enum TyreCompound
-{
-    Soft,
-    Medium,
-    Hard,
-    Wet,
-    Intermediate
-}
 
 public static class PortChecker
 {

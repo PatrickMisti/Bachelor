@@ -1,12 +1,5 @@
-using Akka.Cluster.Hosting;
-using Akka.Hosting;
-using DiverShardHost.Cluster.Actors;
 using DiverShardHost.Config;
-using Infrastructure.Cluster.Base;
-using Infrastructure.Cluster.Config;
 using Infrastructure.General;
-using Serilog;
-using Serilog.Events;
 
 var builder = Host.CreateApplicationBuilder(args);
 var defaultPort = 5000;
