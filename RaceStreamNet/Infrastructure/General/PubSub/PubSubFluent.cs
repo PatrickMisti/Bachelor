@@ -1,17 +1,18 @@
 ﻿using Akka.Actor;
 using Akka.Cluster.Tools.PublishSubscribe;
+using Infrastructure.General.Message;
 
 namespace Infrastructure.General.PubSub;
 public sealed class PubSubFluent(IActorRef mediator)
 {
-    public Publisher All => new(mediator, PubSubMember.All);
+    public Publisher All => new(mediator, PubSubMember.All, true);
     public Publisher Backend => new(mediator, PubSubMember.Backend);
     public Publisher Ingress => new(mediator, PubSubMember.Ingress);
     public Publisher Api => new(mediator, PubSubMember.Api);
 
-    public readonly struct Publisher(IActorRef mediator, PubSubMember topic)
+    public readonly struct Publisher(IActorRef mediator, PubSubMember topic, bool onePerGroup = false)
     {
-        public void Publish(object message, bool onePerGroup = false)
+        public void Publish(IPubMessage message)
             => mediator.Tell(new Publish(topic.ToStr(), message, onePerGroup));
     }
 }
