@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.Event;
+using Akka.Hosting;
 using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
@@ -14,12 +15,15 @@ public class DriverActor : ReceiveActor
     private readonly DriverState _state;
     private readonly string _entityId;
 
+    private readonly IActorRef _handler;
 
-    public DriverActor()
+
+    public DriverActor(IRequiredActor<NotifyDriverStateHandler> handler)
     {
         _logger.Info("DriverActor constructor");
         _entityId = Self.Path.Name;
         _state = new();
+        _handler = handler.ActorRef;
 
         Receive<UpdateDriverTelemetry>(HandleUpdateDriverTelemetry);
         Receive<GetDriverState>(HandleGetDriverState);
@@ -41,6 +45,7 @@ public class DriverActor : ReceiveActor
         _logger.Debug("Telemetry update for DriverId={DriverId} Lap={Lap} Pos={Pos}", _entityId, _state.LapNumber, _state.PositionOnTrack);
 
         Sender.Tell(Status.Success.Instance);
+        _handler.Tell(new UpdatedDriverMessage(mid, _state));
     }
 
     private void HandleGetDriverState(GetDriverState message)

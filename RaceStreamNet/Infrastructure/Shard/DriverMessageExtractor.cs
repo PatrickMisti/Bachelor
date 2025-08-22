@@ -13,7 +13,7 @@ public class DriverMessageExtractor(int maxNumberOfShards = 100) : HashCodeMessa
         string? id = message switch
         {
             UpdateDriverTelemetry m => m.DriverId,
-            GetDriverState m => m.DriverId,
+            //GetDriverState m => m.DriverId, // updatedDriverTelemetry should only be used for routing
             _ => null
         };
 

@@ -1,8 +1,9 @@
-﻿using Akka.Cluster.Hosting;
+﻿using Akka.Actor;
+using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
 using Akka.Hosting;
-using Infrastructure.General;
 using DiverShardHost.Actors;
+using Infrastructure.General;
 using Infrastructure.Shard;
 
 namespace DiverShardHost.Config;
@@ -39,7 +40,7 @@ public static class AkkaBootstrapExtension
                     // options.Durable.Lmdb.Directory = "/var/lib/akka/ddata";
                     // options.Durable.Lmdb.MapSize = 512L * 1024 * 1024; 
                 })
-                .WithShardRegion<DriverActor>(
+                .WithShardRegion<DriverRegionMarker>(
                     typeName: akkaHc.ShardName,
                     entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActor>(),
                     messageExtractor: extractor,
@@ -56,7 +57,13 @@ public static class AkkaBootstrapExtension
                         // optional: use DData for state store
                         RememberEntitiesStore = RememberEntitiesStore.DData
                         
-                    });
+                    })
+                .WithActors((system, registry, resolver) => 
+                {
+                    var notifierProps = resolver.Props<NotifyDriverStateHandler>();
+                    var notifierActor = system.ActorOf(notifierProps, "notify-driver-state-handler");
+                    registry.Register<NotifyDriverStateHandler>(notifierActor);
+                });
         });
 
         return sp;
