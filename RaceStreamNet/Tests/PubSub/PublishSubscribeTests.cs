@@ -11,16 +11,18 @@ namespace Tests.PubSub;
 public class PublishSubscribeTests() : TestKit(TestConfig)
 {
     private static readonly Config TestConfig =
-        ConfigurationFactory.ParseString(@"
-akka {
-  actor.provider = cluster
-  remote.dot-netty.tcp.hostname = ""127.0.0.1""
-  remote.dot-netty.tcp.port = 0
-  loglevel = INFO
-  log-dead-letters-during-shutdown = off
-  remote.log-serialization-warnings = on
-}")
-            .WithFallback(DistributedPubSub.DefaultConfig());
+        ConfigurationFactory.ParseString("""
+            
+                                         akka {
+                                             actor.provider = cluster
+                                             remote.dot-netty.tcp.hostname = ""127.0.0.1""
+                                             remote.dot-netty.tcp.port = 0
+                                             loglevel = INFO
+                                             log-dead-letters-during-shutdown = off
+                                             remote.log-serialization-warnings = on
+                                         }
+            
+            """).WithFallback(DistributedPubSub.DefaultConfig());
 
     [Fact]
     public async Task Should_publish_and_receive_on_topic()
