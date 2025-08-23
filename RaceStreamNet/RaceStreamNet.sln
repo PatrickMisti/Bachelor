@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationTests", "Integra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClusterCoordinator", "ClusterCoordinator\ClusterCoordinator.csproj", "{61CE2C60-4692-4E93-9EDA-75F7C94534A9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SystemTests", "SystemTests\SystemTests.csproj", "{9260567B-8EB4-4C1C-843E-905B3F936133}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{61CE2C60-4692-4E93-9EDA-75F7C94534A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61CE2C60-4692-4E93-9EDA-75F7C94534A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61CE2C60-4692-4E93-9EDA-75F7C94534A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9260567B-8EB4-4C1C-843E-905B3F936133}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9260567B-8EB4-4C1C-843E-905B3F936133}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9260567B-8EB4-4C1C-843E-905B3F936133}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9260567B-8EB4-4C1C-843E-905B3F936133}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,8 +12,19 @@ public sealed class PubSubFluent(IActorRef mediator)
 
     public readonly struct Publisher(IActorRef mediator, PubSubMember topic, bool onePerGroup = false)
     {
+        private string TopicName => topic.ToStr();
+        private string TopicPath => $"/topic/{TopicName}";
+
         public void Publish(IPubMessage message)
-            => mediator.Tell(new Publish(topic.ToStr(), message, onePerGroup));
+        {
+            mediator.Tell(new Publish(TopicName, message));
+        }
+
+        public async Task<T> Ask<T>(IPubMessage message)
+            => await mediator.Ask<T>(new Send(TopicPath, message));
+
+        public async Task<T> AskAll<T>(IPubMessage message)
+            => await mediator.Ask<T>(new SendToAll(TopicPath, message));
     }
 }
 

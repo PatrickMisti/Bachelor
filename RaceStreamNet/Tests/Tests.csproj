@@ -7,9 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Akka" Version="1.5.46" />
-    <PackageReference Include="Akka.Cluster.Sharding" Version="1.5.46" />
-    <PackageReference Include="Akka.TestKit.Xunit2" Version="1.5.46" />
+    <PackageReference Include="Akka" Version="1.5.48" />
+    <PackageReference Include="Akka.TestKit.Xunit2" Version="1.5.48" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />

@@ -17,6 +17,8 @@ public sealed class DriverState
     public TimeSpan? Sector3Time { get; private set; }
     public DateTime Timestamp { get; private set; }
 
+    public DriverState() {}
+
     public DriverState Apply(UpdateDriverTelemetry m)
     {
         //DriverId = m.DriverId;

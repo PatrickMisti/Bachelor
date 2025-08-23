@@ -22,14 +22,20 @@ public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBa
 
     public NotifyDriverStateHandler(IRequiredActor<DriverRegionMarker> shardRegion)
     {
-        _region = shardRegion ?? throw new ArgumentNullException(nameof(shardRegion));
+        _region = shardRegion;
+    }
 
+    public override void Activated()
+    {
+        _log.Info("Subscription is up");
         ReceiveAsync<GetDriverStateRequest>(DriverStateHandler);
+
         Receive<UpdatedDriverMessage>(NotifyUpdatedDriver);
     }
 
     private async Task DriverStateHandler(GetDriverStateRequest msg)
-    {
+    { 
+        _log.Warning("Hallo from PubSub Suksma");
         if (msg is { Id: null } or { Id: "" })
         {
             Sender.Tell(new GetDriverStateResponse(msg.Id ?? "", $"{typeof(GetDriverStateRequest)} id was empty"));
@@ -39,7 +45,7 @@ public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBa
         try
         {
             var stats = await _region.ActorRef
-                .Ask<CurrentShardRegionState>(GetShardRegionStats.Instance, _timeout);
+                .Ask<CurrentShardRegionState>(GetShardRegionState.Instance, _timeout);
 
             var exists = stats.Shards.Any(s => s.EntityIds.Contains(msg.Id));
 
@@ -52,6 +58,7 @@ public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBa
             var res = await _region.ActorRef
                 .Ask<DriverStateResponse>(new GetDriverState(msg.Id), _timeout);
 
+            _log.Info($"Sender driver state to {res.State} back");
             Sender.Tell(new GetDriverStateResponse(msg.Id, res.State!));
         }
         catch (DriverInShardNotFoundException e)

@@ -23,7 +23,8 @@ public static class AkkaHostingExtension
                 {
                     SeedNodes = config.SeedNodes,
                     Roles = [config.Role],
-                });
+                })
+            .WithDistributedPubSub(role: null!);
 
         return builder;
     }
