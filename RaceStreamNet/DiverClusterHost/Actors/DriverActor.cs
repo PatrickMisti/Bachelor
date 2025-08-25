@@ -18,7 +18,7 @@ public class DriverActor : ReceiveActor
     private readonly IActorRef _handler;
 
 
-    public DriverActor(IRequiredActor<NotifyDriverStateHandler> handler)
+    public DriverActor(IRequiredActor<TelemetryRegionHandler> handler)
     {
         _logger.Info("DriverActor constructor");
         _entityId = Self.Path.Name;
@@ -62,6 +62,6 @@ public class DriverActor : ReceiveActor
         Sender.Tell(new DriverStateResponse(_entityId, _state));
     }
 
-    protected override void PreStart() => _logger.Info("DriverActor({EntityId}) started", Self.Path.Name);
-    protected override void PostStop() => _logger.Info("DriverActor({EntityId}) stopped", Self.Path.Name);
+    protected override void PreStart() => _logger.Debug("DriverActor({EntityId}) started", Self.Path.Name);
+    protected override void PostStop() => _logger.Debug("DriverActor({EntityId}) stopped", Self.Path.Name);
 }

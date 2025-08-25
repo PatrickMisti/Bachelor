@@ -13,29 +13,28 @@ using Infrastructure.Shard.Messages;
 
 namespace DiverShardHost.Actors;
 
-public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBackend>
+public sealed class TelemetryRegionHandler : ReceivePubSubActor<IPubSubTopicBackend>
 {
     private readonly ILoggingAdapter _log = Context.GetLogger();
     private readonly IRequiredActor<DriverRegionMarker> _region;
 
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
 
-    public NotifyDriverStateHandler(IRequiredActor<DriverRegionMarker> shardRegion)
+    public TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> shardRegion)
     {
         _region = shardRegion;
+
+        Receive<UpdatedDriverMessage>(NotifyUpdatedDriver);
     }
 
     public override void Activated()
     {
         _log.Info("Subscription is up");
         ReceiveAsync<GetDriverStateRequest>(DriverStateHandler);
-
-        Receive<UpdatedDriverMessage>(NotifyUpdatedDriver);
     }
 
     private async Task DriverStateHandler(GetDriverStateRequest msg)
     { 
-        _log.Warning("Hallo from PubSub Suksma");
         if (msg is { Id: null } or { Id: "" })
         {
             Sender.Tell(new GetDriverStateResponse(msg.Id ?? "", $"{typeof(GetDriverStateRequest)} id was empty"));
@@ -44,12 +43,7 @@ public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBa
 
         try
         {
-            var stats = await _region.ActorRef
-                .Ask<CurrentShardRegionState>(GetShardRegionState.Instance, _timeout);
-
-            var exists = stats.Shards.Any(s => s.EntityIds.Contains(msg.Id));
-
-            if (!exists)
+            if (!await IsDriverIdInRegion(msg.Id))
             {
                 Sender.Tell(new GetDriverStateResponse(msg.Id, $"{msg.Id} not found in region"));
                 return;
@@ -76,5 +70,13 @@ public sealed class NotifyDriverStateHandler : ReceivePubSubActor<IPubSubTopicBa
     private void NotifyUpdatedDriver(UpdatedDriverMessage msg)
     {
         Context.PubSub().Api.Publish(new NotifyDriverStateMessage(msg.DriverId, msg.State));
+    }
+
+    private async Task<bool> IsDriverIdInRegion(string id)
+    {
+        var stats = await _region.ActorRef
+            .Ask<CurrentShardRegionState>(GetShardRegionState.Instance, _timeout);
+
+        return stats.Shards.Any(s => s.EntityIds.Contains(id));
     }
 }

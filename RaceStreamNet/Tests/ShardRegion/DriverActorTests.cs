@@ -1,10 +1,12 @@
 ﻿using Akka.Actor;
+using Akka.Hosting;
 using Akka.TestKit.Xunit2;
 using DiverShardHost.Actors;
 using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
 using Infrastructure.Shard.Responses;
+using Moq;
 using Xunit;
 
 namespace Tests.ShardRegion;
@@ -16,7 +18,8 @@ public sealed class DriverActorTests : TestKit
     {
         // Arrange: EntityId via ActorName simulation (like ShardRegion)
         var entityId = "DRIVER_44";
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor()), entityId);
+        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), entityId);
 
         var upsert = new UpdateDriverTelemetry(
             DriverId: entityId,
@@ -54,7 +57,8 @@ public sealed class DriverActorTests : TestKit
     [Fact]
     public void UpdateDriverTelemetry_with_wrong_id_should_fail_and_keep_state()
     {
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor()), "DRIVER_11");
+        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), "DRIVER_11");
 
         // Update with wrong DriverId
         var wrong = new UpdateDriverTelemetry(
@@ -88,7 +92,8 @@ public sealed class DriverActorTests : TestKit
     [Fact]
     public void GetDriverState_with_wrong_id_should_return_failure_response()
     {
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor()), "DRIVER_X");
+        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), "DRIVER_X");
 
         actor.Tell(new GetDriverState("ANOTHER_ID"));
         var resp = ExpectMsg<DriverStateResponse>(TimeSpan.FromSeconds(2));

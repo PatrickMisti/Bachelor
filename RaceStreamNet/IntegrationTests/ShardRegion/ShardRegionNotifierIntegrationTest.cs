@@ -118,7 +118,7 @@ public class ShardRegionNotifierIntegrationTest : TestKit, IAsyncLifetime
         Assert.NotNull(suc);
 
         // 2) Verifiziere, dass PubSub bereits „lebt“ (Notify kommt an)
-        //    -> Das stellt sicher, dass der NotifyDriverStateHandler und der DemoApiActor bereits subscribed sind.
+        //    -> Das stellt sicher, dass der TelemetryRegionHandler und der DemoApiActor bereits subscribed sind.
         var notify = probe.ExpectMsg<NotifyDriverStateMessage>(_timeout);
         Assert.Equal(mock.DriverId, notify.DriverId);
         Assert.Equal(mock.LapNumber, notify.State.LapNumber);

@@ -60,9 +60,9 @@ public static class AkkaBootstrapExtension
                     })
                 .WithActors((system, registry, resolver) => 
                 {
-                    var notifierProps = resolver.Props<NotifyDriverStateHandler>();
-                    var notifierActor = system.ActorOf(notifierProps, "notify-driver-state-handler");
-                    registry.Register<NotifyDriverStateHandler>(notifierActor);
+                    var notifierProps = resolver.Props<TelemetryRegionHandler>();
+                    var notifierActor = system.ActorOf(notifierProps, "telemetry-region-handler");
+                    registry.Register<TelemetryRegionHandler>(notifierActor);
                 });
         });
 
