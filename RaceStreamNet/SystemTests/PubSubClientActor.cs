@@ -63,6 +63,6 @@ public sealed class PubSubClientActor : ReceiveActor
         _log.Info("Publishing GetDriverStateRequest({0}) to topic 'backend'", _driverId);
         _mediator.Tell(new Publish("backend", request), Self);*/
         _stopwatch.Start();
-        Context.System.PubSub().Backend.Publish(request);
+        Context.System.PubSub(true).Backend.Publish(request);
     }
 }

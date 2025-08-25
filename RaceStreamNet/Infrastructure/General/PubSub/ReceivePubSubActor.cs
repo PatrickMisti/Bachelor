@@ -28,8 +28,10 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
         _member = PubSubTypeMapping.ToMember(typeof(TTopic)) ?? PubSubMember.All;
         _log.Info($"Mediator is trying to connected to topic {_member.ToStr()}");
 
-        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
+        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
     }
+
+    private string GenerateGroupId(PubSubMember m) => "group-" + m.ToStr();
 
     private void HandleAckSub()
     {
