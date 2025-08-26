@@ -38,17 +38,6 @@ public sealed class PubSubClientActor : ReceiveActor
         
     }
 
-    private async Task PublishWithRetry( GetDriverStateRequest msg,
-        int maxAttempts = 3, int delayMs = 500)
-    {
-        for (var i = 1; i <= maxAttempts; i++)
-        {
-            Context.PubSub().Backend.Publish(msg);
-            // kleine Pause – Registrierung/Cluster-Gossip braucht Zeit
-            await Task.Delay(delayMs);
-        }
-    }
-
     protected override void PreStart()
     {
         //PublishWithRetry(new GetDriverStateRequest("VER"));
@@ -62,7 +51,8 @@ public sealed class PubSubClientActor : ReceiveActor
 
         _log.Info("Publishing GetDriverStateRequest({0}) to topic 'backend'", _driverId);
         _mediator.Tell(new Publish("backend", request), Self);*/
+        _log.Info("Start Test to ask Handler!");
         _stopwatch.Start();
-        Context.System.PubSub(true).Backend.Publish(request);
+        Context.System.PubSubGroup().Backend.Publish(request);
     }
 }

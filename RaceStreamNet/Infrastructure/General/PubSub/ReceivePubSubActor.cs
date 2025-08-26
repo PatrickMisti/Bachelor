@@ -9,6 +9,9 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
     private IActorRef _pubSubActorRef = ActorRefs.Nobody;
     private readonly ILoggingAdapter _log = Context.GetLogger();
 
+    private const int ExpectedSubscriptions = 2;
+    private int _currentSubscriptions = 0;
+
     private PubSubMember _member;
     public IStash Stash { get; set; } = null!;
 
@@ -28,7 +31,11 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
         _member = PubSubTypeMapping.ToMember(typeof(TTopic)) ?? PubSubMember.All;
         _log.Info($"Mediator is trying to connected to topic {_member.ToStr()}");
 
-        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
+        // All in group should grab notification
+        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
+
+        // For group like "Round Robin" only one get notification
+        _pubSubActorRef.Tell(new Subscribe(GenerateGroupId(_member), Self, GenerateGroupId(_member)));
     }
 
     private string GenerateGroupId(PubSubMember m) => "group-" + m.ToStr();
@@ -37,7 +44,10 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
     {
         Receive<SubscribeAck>(msg =>
         {
-            _log.Info($"Grab Ack for {msg.Subscribe.Topic}");
+            _log.Info($"Grab Ack for {msg.Subscribe.Topic} with group ({msg.Subscribe.Group})");
+            _currentSubscriptions++;
+
+            if (_currentSubscriptions < ExpectedSubscriptions) return;
 
             Become(() =>
             {

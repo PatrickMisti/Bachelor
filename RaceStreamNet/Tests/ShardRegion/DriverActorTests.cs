@@ -13,13 +13,22 @@ namespace Tests.ShardRegion;
 
 public sealed class DriverActorTests : TestKit
 {
+    private readonly Mock<IRequiredActor<TelemetryRegionHandler>> _telRegionHandler;
+    public DriverActorTests()
+    {
+        _telRegionHandler = new Mock<IRequiredActor<TelemetryRegionHandler>>();
+
+        var notifyProbe = CreateTestProbe();
+        _telRegionHandler.SetupGet(x => x.ActorRef).Returns(notifyProbe.Ref);
+    }
+
     [Fact]
     public void UpdateDriverTelemetry_should_update_state_and_ack()
     {
         // Arrange: EntityId via ActorName simulation (like ShardRegion)
         var entityId = "DRIVER_44";
-        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), entityId);
+        // thows error wenn _telRegionHandler.tell in driveractor 
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId);
 
         var upsert = new UpdateDriverTelemetry(
             DriverId: entityId,
@@ -49,16 +58,16 @@ public sealed class DriverActorTests : TestKit
         Assert.True(resp.IsSuccess);
         Assert.Equal(entityId, resp.DriverId);
         Assert.NotNull(resp.State);
-        Assert.Equal(12, resp.State!.LapNumber);
-        Assert.Equal(3, resp.State.PositionOnTrack);
-        Assert.Equal(TyreCompound.Soft, resp.State.CurrentTyreCompound);
+        Assert.Equal(upsert.LapNumber, resp.State!.LapNumber);
+        Assert.Equal(upsert.PositionOnTrack, resp.State.PositionOnTrack);
+        Assert.Equal(upsert.CurrentTyreCompound, resp.State.CurrentTyreCompound);
     }
 
     [Fact]
     public void UpdateDriverTelemetry_with_wrong_id_should_fail_and_keep_state()
     {
-        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), "DRIVER_11");
+        var entityId = "DRIVER_11";
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId);
 
         // Update with wrong DriverId
         var wrong = new UpdateDriverTelemetry(
@@ -81,10 +90,10 @@ public sealed class DriverActorTests : TestKit
         Assert.IsType<DriverInShardNotFoundException>(failure.Cause);
 
         // State should not change
-        actor.Tell(new GetDriverState("DRIVER_11"));
+        actor.Tell(new GetDriverState(entityId));
         var resp = ExpectMsg<DriverStateResponse>();
         Assert.True(resp.IsSuccess);
-        Assert.Equal("DRIVER_11", resp.DriverId);
+        Assert.Equal(entityId, resp.DriverId);
         Assert.NotNull(resp.State);
         Assert.Equal(0, resp.State!.LapNumber);
     }
@@ -92,8 +101,7 @@ public sealed class DriverActorTests : TestKit
     [Fact]
     public void GetDriverState_with_wrong_id_should_return_failure_response()
     {
-        var mock = new Mock<IRequiredActor<TelemetryRegionHandler>>();
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(mock.Object)), "DRIVER_X");
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), "DRIVER_X");
 
         actor.Tell(new GetDriverState("ANOTHER_ID"));
         var resp = ExpectMsg<DriverStateResponse>(TimeSpan.FromSeconds(2));

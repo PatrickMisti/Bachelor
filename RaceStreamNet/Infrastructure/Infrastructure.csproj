@@ -24,6 +24,7 @@
   <ItemGroup>
     <Folder Include="Cluster\Base\" />
     <Folder Include="Cluster\Interfaces\" />
+    <Folder Include="Coordinator\" />
   </ItemGroup>
 
 </Project>

@@ -20,10 +20,10 @@ public class DriverActor : ReceiveActor
 
     public DriverActor(IRequiredActor<TelemetryRegionHandler> handler)
     {
-        _logger.Info("DriverActor constructor");
         _entityId = Self.Path.Name;
         _state = new();
         _handler = handler.ActorRef;
+        _logger.Info($"DriverActor constructor: {_entityId}");
 
         Receive<UpdateDriverTelemetry>(HandleUpdateDriverTelemetry);
         Receive<GetDriverState>(HandleGetDriverState);

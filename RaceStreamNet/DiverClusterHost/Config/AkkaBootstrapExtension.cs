@@ -1,5 +1,4 @@
-﻿using Akka.Actor;
-using Akka.Cluster.Hosting;
+﻿using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
 using Akka.Hosting;
 using DiverShardHost.Actors;

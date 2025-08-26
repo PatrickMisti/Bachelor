@@ -8,7 +8,7 @@ var defaultPort = 5000;
 var akkaHc = new AkkaHostingConfig
 {
     Port = PortChecker.CheckPort(defaultPort),
-    Role = "backend"
+    Role = ClusterMemberEnum.Backend.ToStr()
 };
 
 // Serilog init

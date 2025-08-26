@@ -13,24 +13,18 @@ using Infrastructure.Shard.Messages;
 
 namespace DiverShardHost.Actors;
 
-public sealed class TelemetryRegionHandler : ReceivePubSubActor<IPubSubTopicBackend>
+public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> shardRegion)
+    : ReceivePubSubActor<IPubSubTopicBackend>
 {
     private readonly ILoggingAdapter _log = Context.GetLogger();
-    private readonly IRequiredActor<DriverRegionMarker> _region;
 
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
-
-    public TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> shardRegion)
-    {
-        _region = shardRegion;
-
-        Receive<UpdatedDriverMessage>(NotifyUpdatedDriver);
-    }
 
     public override void Activated()
     {
         _log.Info("Subscription is up");
         ReceiveAsync<GetDriverStateRequest>(DriverStateHandler);
+        Receive<UpdatedDriverMessage>(NotifyUpdatedDriver);
     }
 
     private async Task DriverStateHandler(GetDriverStateRequest msg)
@@ -49,7 +43,7 @@ public sealed class TelemetryRegionHandler : ReceivePubSubActor<IPubSubTopicBack
                 return;
             }
 
-            var res = await _region.ActorRef
+            var res = await shardRegion.ActorRef
                 .Ask<DriverStateResponse>(new GetDriverState(msg.Id), _timeout);
 
             _log.Info($"Sender driver state to {res.State} back");
@@ -74,7 +68,7 @@ public sealed class TelemetryRegionHandler : ReceivePubSubActor<IPubSubTopicBack
 
     private async Task<bool> IsDriverIdInRegion(string id)
     {
-        var stats = await _region.ActorRef
+        var stats = await shardRegion.ActorRef
             .Ask<CurrentShardRegionState>(GetShardRegionState.Instance, _timeout);
 
         return stats.Shards.Any(s => s.EntityIds.Contains(id));
