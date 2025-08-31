@@ -3,12 +3,12 @@ using Akka.Cluster;
 using Akka.Cluster.Sharding;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using DiverShardHost.Config;
+using DriverShardHost.Actors.Messages;
+using DriverShardHost.Config;
 using Infrastructure.General;
 using Infrastructure.Models;
 using Infrastructure.Shard;
 using Infrastructure.Shard.Messages;
-using Infrastructure.Shard.Responses;
 using Infrastructure.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -101,7 +101,7 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
         var ack = await _proxyRegion!.Ask<object>(upsert, TimeSpan.FromSeconds(5));
         Assert.NotNull(ack);
 
-        var resp = await _proxyRegion.Ask<DriverStateResponse>(new GetDriverState(driverId), TimeSpan.FromSeconds(10));
+        var resp = await _proxyRegion.Ask<DriverStateMessage>(new GetDriverState(driverId), TimeSpan.FromSeconds(10));
         Assert.NotNull(resp);
         Assert.True(resp.IsSuccess);
         Assert.Equal(driverId, resp.DriverId);
@@ -136,7 +136,7 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
         await _proxyRegion!.Ask<Status>(upsert, TimeSpan.FromSeconds(5));
 
         var wrongId = "DRIVER_XYZ56";
-        var resp = await _proxyRegion.Ask<DriverStateResponse>(
+        var resp = await _proxyRegion.Ask<DriverStateMessage>(
             new GetDriverState(wrongId),
             TimeSpan.FromSeconds(5));
 

@@ -79,3 +79,4 @@ static async Task<int> TestShardRegion(ActorSystem system, string driverId)
     }
 }
 
+await TestShardRegion(system, driverId);

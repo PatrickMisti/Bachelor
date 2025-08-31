@@ -1,11 +1,11 @@
 ﻿using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
 using Akka.Hosting;
-using DiverShardHost.Actors;
+using DriverShardHost.Actors;
 using Infrastructure.General;
 using Infrastructure.Shard;
 
-namespace DiverShardHost.Config;
+namespace DriverShardHost.Config;
 
 public static class AkkaBootstrapExtension
 {

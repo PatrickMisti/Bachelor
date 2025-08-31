@@ -32,10 +32,10 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
         _log.Info($"Mediator is trying to connected to topic {_member.ToStr()}");
 
         // All in group should grab notification
-        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
+       _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
 
         // For group like "Round Robin" only one get notification
-        _pubSubActorRef.Tell(new Subscribe(GenerateGroupId(_member), Self, GenerateGroupId(_member)));
+        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
     }
 
     private string GenerateGroupId(PubSubMember m) => "group-" + m.ToStr();
@@ -64,8 +64,7 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
         if (_pubSubActorRef.IsNobody()) return;
 
         _pubSubActorRef.Tell(new Unsubscribe(_member.ToStr(), Self));
-        if (_member is not PubSubMember.All)
-            _pubSubActorRef.Tell(new Unsubscribe(PubSubMember.All.ToStr(), Self));
+        _pubSubActorRef.Tell(new Unsubscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
     }
 }
 
@@ -74,5 +73,6 @@ public enum PubSubMember
     All,
     Backend,
     Ingress,
-    Api
+    Api,
+    Controller
 }

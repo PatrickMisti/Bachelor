@@ -1,5 +1,5 @@
 ﻿using Infrastructure.Shard.Interfaces;
 
-namespace Infrastructure.Shard.Messages;
+namespace DriverShardHost.Actors.Messages;
 
 public sealed record GetDriverState(string DriverId) : IHasDriverId;

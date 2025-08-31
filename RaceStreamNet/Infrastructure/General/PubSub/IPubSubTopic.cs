@@ -5,3 +5,4 @@ public interface IPubSubTopicBackend : IPubSubTopic;
 public interface IPubSubTopicAll : IPubSubTopic;
 public interface IPubSubTopicIngress : IPubSubTopic;
 public interface IPubSubTopicApi : IPubSubTopic;
+public interface IPubSubTopicController : IPubSubTopic;

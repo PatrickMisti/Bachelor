@@ -16,14 +16,17 @@ public sealed class PubSubFluent(IActorRef mediator, bool oneMessagePerGroup)
         private string TopicPath => $"/topic/{TopicName}";
 
         public void Publish(IPubMessage message)
-            => mediator.Tell(new Publish(onePerGroup ? $"group-{TopicName}" : TopicName, message, onePerGroup));
+            => mediator.Tell(new Publish(TopicName, message, onePerGroup));
 
+        // Not working
         public async Task<T> Ask<T>(IPubMessage message)
             => await mediator.Ask<T>(new Send(TopicPath, message));
 
+        // Not working
         public async Task<T> AskAll<T>(IPubMessage message)
             => await mediator.Ask<T>(new SendToAll(TopicPath, message));
 
+        // Not tested
         public void PublishAll(IPubMessage message) 
             => mediator.Tell(new SendToAll(TopicPath, message));
     }

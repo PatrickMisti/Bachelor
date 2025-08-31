@@ -1,7 +1,7 @@
 ﻿using Infrastructure.Models;
 using Infrastructure.Shard.Interfaces;
 
-namespace Infrastructure.Shard.Messages;
+namespace DriverShardHost.Actors.Messages;
 
 public sealed class UpdatedDriverMessage(string driverId, DriverState state) : IHasDriverId
 {

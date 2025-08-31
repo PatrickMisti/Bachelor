@@ -1,4 +1,4 @@
-using DiverShardHost.Config;
+using DriverShardHost.Config;
 using Infrastructure.General;
 
 var builder = Host.CreateApplicationBuilder(args);

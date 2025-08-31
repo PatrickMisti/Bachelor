@@ -8,6 +8,7 @@ public static class PubSubExtension
         PubSubMember.Backend => "backend",
         PubSubMember.Ingress => "ingress",
         PubSubMember.Api => "api",
+        PubSubMember.Controller => "controller",
         _ => throw new ArgumentOutOfRangeException(nameof(m), m, null)
     };
 }
@@ -20,6 +21,7 @@ public static class PubSubTypeMapping
         var x when x == typeof(IPubSubTopicBackend) => PubSubMember.Backend,
         var x when x == typeof(IPubSubTopicIngress) => PubSubMember.Ingress,
         var x when x == typeof(IPubSubTopicApi) => PubSubMember.Api,
+        var x when x == typeof(IPubSubTopicController) => PubSubMember.Controller,
         _ => null
     };
 }

@@ -4,7 +4,7 @@ using Akka.Cluster.Sharding;
 using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using DiverShardHost.Config;
+using DriverShardHost.Config;
 using Infrastructure.Cluster.Messages.Notification;
 using Infrastructure.Cluster.Messages.RequestMessages;
 using Infrastructure.Cluster.Messages.ResponseMessage;

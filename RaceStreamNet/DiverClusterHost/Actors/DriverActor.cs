@@ -1,12 +1,12 @@
 ﻿using Akka.Actor;
 using Akka.Event;
 using Akka.Hosting;
+using DriverShardHost.Actors.Messages;
 using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
-using Infrastructure.Shard.Responses;
 
-namespace DiverShardHost.Actors;
+namespace DriverShardHost.Actors;
 
 public class DriverActor : ReceiveActor
 {
@@ -54,12 +54,12 @@ public class DriverActor : ReceiveActor
 
         if (!string.IsNullOrEmpty(mid) && mid != _entityId)
         {
-            Sender.Tell(DriverStateResponse.Failure(new DriverInShardNotFoundException(mid)));
+            Sender.Tell(DriverStateMessage.Failure(new DriverInShardNotFoundException(mid)));
             return;
         }
 
         _logger.Debug("GetDriverState for DriverId={DriverId}", _entityId);
-        Sender.Tell(new DriverStateResponse(_entityId, _state));
+        Sender.Tell(DriverStateMessage.Success(_entityId, _state));
     }
 
     protected override void PreStart() => _logger.Debug("DriverActor({EntityId}) started", Self.Path.Name);

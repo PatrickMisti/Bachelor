@@ -11,7 +11,7 @@ public class AkkaHostingConfig
     // List of seed nodes for the cluster
     public string[] SeedNodes { get; set; } = [ 
         "akka.tcp://cluster-system@localhost:5000", 
-        //"akka.tcp://cluster-system@localhost:6000"
+        "akka.tcp://cluster-system@localhost:6000"
     ];
     // Roles for the cluster nodes
     public List<string>? Roles { get; set; }

@@ -1,11 +1,11 @@
 ﻿using Akka.Actor;
 using Akka.Hosting;
 using Akka.TestKit.Xunit2;
-using DiverShardHost.Actors;
+using DriverShardHost.Actors;
+using DriverShardHost.Actors.Messages;
 using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
-using Infrastructure.Shard.Responses;
 using Moq;
 using Xunit;
 
@@ -53,7 +53,7 @@ public sealed class DriverActorTests : TestKit
 
         // Query
         actor.Tell(new GetDriverState(entityId));
-        var resp = ExpectMsg<DriverStateResponse>(TimeSpan.FromSeconds(2));
+        var resp = ExpectMsg<DriverStateMessage>(TimeSpan.FromSeconds(2));
 
         Assert.True(resp.IsSuccess);
         Assert.Equal(entityId, resp.DriverId);
@@ -91,7 +91,7 @@ public sealed class DriverActorTests : TestKit
 
         // State should not change
         actor.Tell(new GetDriverState(entityId));
-        var resp = ExpectMsg<DriverStateResponse>();
+        var resp = ExpectMsg<DriverStateMessage>();
         Assert.True(resp.IsSuccess);
         Assert.Equal(entityId, resp.DriverId);
         Assert.NotNull(resp.State);
@@ -104,7 +104,7 @@ public sealed class DriverActorTests : TestKit
         var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), "DRIVER_X");
 
         actor.Tell(new GetDriverState("ANOTHER_ID"));
-        var resp = ExpectMsg<DriverStateResponse>(TimeSpan.FromSeconds(2));
+        var resp = ExpectMsg<DriverStateMessage>(TimeSpan.FromSeconds(2));
 
         Assert.False(resp.IsSuccess);
         Assert.IsType<DriverInShardNotFoundException>(resp.Error);

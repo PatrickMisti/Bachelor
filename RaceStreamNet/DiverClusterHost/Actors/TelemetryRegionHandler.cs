@@ -2,16 +2,15 @@
 using Akka.Cluster.Sharding;
 using Akka.Event;
 using Akka.Hosting;
+using DriverShardHost.Actors.Messages;
 using Infrastructure.Cluster.Messages.Notification;
 using Infrastructure.Cluster.Messages.RequestMessages;
 using Infrastructure.Cluster.Messages.ResponseMessage;
 using Infrastructure.General.PubSub;
 using Infrastructure.Shard;
 using Infrastructure.Shard.Exceptions;
-using Infrastructure.Shard.Responses;
-using Infrastructure.Shard.Messages;
 
-namespace DiverShardHost.Actors;
+namespace DriverShardHost.Actors;
 
 public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> shardRegion)
     : ReceivePubSubActor<IPubSubTopicBackend>
@@ -44,7 +43,7 @@ public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> sh
             }
 
             var res = await shardRegion.ActorRef
-                .Ask<DriverStateResponse>(new GetDriverState(msg.Id), _timeout);
+                .Ask<DriverStateMessage>(new GetDriverState(msg.Id), _timeout);
 
             _log.Info($"Sender driver state to {res.State} back");
             Sender.Tell(new GetDriverStateResponse(msg.Id, res.State!));

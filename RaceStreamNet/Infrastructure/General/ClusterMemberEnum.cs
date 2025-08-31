@@ -1,4 +1,6 @@
-﻿namespace Infrastructure.General;
+﻿using System.Collections.Immutable;
+
+namespace Infrastructure.General;
 
 public enum ClusterMemberEnum
 {
@@ -30,4 +32,18 @@ public static class ClusterMemberExtension {
         };
         return Enum.IsDefined(typeof(ClusterMemberEnum), member);
     }
+
+    public static ClusterMemberEnum Parse(string? role)
+    {
+        if (role is null) 
+            throw new ArgumentNullException(nameof(role));
+
+        if (TryParse(role, out var member))
+            return member;
+
+        throw new ArgumentOutOfRangeException(nameof(role), role, null);
+    }
+
+    public static bool Contains(this ClusterMemberEnum m, string role) => m.ToStr() == role.ToLower();
+    public static bool Contains(this ClusterMemberEnum m, ImmutableHashSet<string> role) => role.Contains(m.ToStr());
 }
