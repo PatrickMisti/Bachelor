@@ -4,8 +4,8 @@ using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Event;
 using Akka.Streams.Actors;
 using Infrastructure.Cluster.Messages.RequestMessages;
-using Infrastructure.Cluster.Messages.ResponseMessage;
 using Infrastructure.General.PubSub;
+using Infrastructure.Shard.Messages.ResponseMessage;
 
 namespace SystemTests;
 

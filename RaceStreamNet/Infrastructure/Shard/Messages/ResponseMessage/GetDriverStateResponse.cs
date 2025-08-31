@@ -2,7 +2,7 @@
 using Infrastructure.Models;
 using Newtonsoft.Json;
 
-namespace Infrastructure.Cluster.Messages.ResponseMessage;
+namespace Infrastructure.Shard.Messages.ResponseMessage;
 
 public sealed class GetDriverStateResponse : IPubMessage
 {

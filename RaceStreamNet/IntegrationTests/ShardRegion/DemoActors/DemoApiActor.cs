@@ -1,8 +1,8 @@
 ﻿using Akka.Actor;
-using Infrastructure.Cluster.Messages.Notification;
-using Infrastructure.Cluster.Messages.RequestMessages;
-using Infrastructure.Cluster.Messages.ResponseMessage;
 using Infrastructure.General.PubSub;
+using Infrastructure.Shard.Messages.Notification;
+using Infrastructure.Shard.Messages.RequestMessages;
+using Infrastructure.Shard.Messages.ResponseMessage;
 
 namespace IntegrationTests.ShardRegion.DemoActors;
 
