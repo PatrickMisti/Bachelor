@@ -1,5 +1,4 @@
 using ClusterCoordinator.Config;
-using Infrastructure.Cluster.Config;
 using Infrastructure.General;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -10,7 +9,7 @@ var defaultPort = 6000;
 var akkaHc = new AkkaHostingConfig
 {
     Port = PortChecker.CheckPort(defaultPort),
-    Role = "controller",
+    Role = ClusterMemberEnum.Controller.ToStr(),
 };
 
 // Serilog init

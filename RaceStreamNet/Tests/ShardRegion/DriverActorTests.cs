@@ -8,13 +8,19 @@ using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests.ShardRegion;
 
 public sealed class DriverActorTests : TestKit
 {
     private readonly Mock<IRequiredActor<TelemetryRegionHandler>> _telRegionHandler;
-    public DriverActorTests()
+    private static readonly string TestConfig = """
+                                                akka.stdout-loglevel = DEBUG
+                                                akka.loggers = ["Akka.TestKit.TestEventListener, Akka.TestKit"]
+                                                akka.loglevel = DEBUG
+                                                """;
+    public DriverActorTests(ITestOutputHelper output) : base (TestConfig, output)
     {
         _telRegionHandler = new Mock<IRequiredActor<TelemetryRegionHandler>>();
 

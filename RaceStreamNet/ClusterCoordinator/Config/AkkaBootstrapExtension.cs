@@ -1,26 +1,26 @@
 ﻿using Akka.Cluster.Hosting;
 using Akka.Hosting;
 using Akka.Persistence.Sql.Hosting;
-using ClusterCoordinator.Listeners;
+using ClusterCoordinator.Actors;
+using ClusterCoordinator.Actors.Listeners;
 using Infrastructure.General;
 
 namespace ClusterCoordinator.Config;
 
 public static class AkkaBootstrapExtension
 {
-    private static readonly string ShardMonitorControllerName = "shard-monitor";
     public static IServiceCollection ConfigureCoordinator(this IServiceCollection sp, AkkaHostingConfig akkaHc,
         string sqlitePath)
     {
         // is needed bc the sqlite path can be relative
-        Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
+        //Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
 
         sp.AddAkka(akkaHc.ClusterName, config =>
         {
             config
                 .UseRemoteCluster(akkaHc)
                 .UseAkkaLogger()
-                .WithSqlPersistence(jb =>
+                /*.WithSqlPersistence(jb =>
                     {
                         jb.ProviderName = "Sqlite";
                         jb.ConnectionString = $"Data Source={sqlitePath}";
@@ -33,20 +33,22 @@ public static class AkkaBootstrapExtension
                         snap.ConnectionString = $"Data Source={sqlitePath}";
                         snap.AutoInitialize = true;
                         //snap.Identifier = "akka.persistence.snapshot-store.sqlite";
-                    })
+                    })*/
                 .WithSingleton<ClusterController>(
                     singletonName: akkaHc.Role,
                     propsFactory: (_, _, resolver) => resolver.Props<ClusterController>(),
                     options: new ClusterSingletonOptions { Role = akkaHc.Role }
-                );
-            // Because of supervisor strategy, we need to register the ShardListener
-            //).WithActors((system, registry, resolver) =>
-            //{
-            //    var shardMonitorProps = resolver.Props<ShardListener>();
-            //    var shardMonitorActor = system.ActorOf(shardMonitorProps, ShardMonitorControllerName);
+                )
+                .WithActors((system, registry, resolver) =>
+                {
+                    // Restart after exception throws
+                    // else supervisor strategy is needed
+                    registry.Register<ClusterEventListener>(
+                        system.ActorOf(resolver.Props<ClusterEventListener>(), "cluster-event-listener"));
 
-            //    registry.Register<ShardListener>(shardMonitorActor);
-            //});
+                    registry.Register<ShardListener>(
+                        system.ActorOf(resolver.Props<ShardListener>(), "shard-listener"));
+                });
         });
 
         return sp;
