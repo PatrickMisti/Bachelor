@@ -30,4 +30,17 @@ public static class MemberUpUtilities
         }
         throw new TimeoutException($"Member with role '{role}' did not reach Up within {timeout.TotalSeconds}s.");
     }
+
+    public static async Task WaitForMemberUp(string role, TimeSpan timeout, Akka.Cluster.Cluster cluster)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var members = cluster.State.Members;
+            if (members.Any(m => m.Status == MemberStatus.Up && m.HasRole(role)))
+                return;
+            await Task.Delay(100);
+        }
+        throw new TimeoutException($"Member with role '{role}' did not reach Up in time.");
+    }
 }

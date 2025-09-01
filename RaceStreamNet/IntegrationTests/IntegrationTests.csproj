@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ClusterCoordinator\ClusterCoordinator.csproj" />
     <ProjectReference Include="..\DiverClusterHost\DriverShardHost.csproj" />
     <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
   </ItemGroup>

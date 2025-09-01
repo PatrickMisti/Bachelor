@@ -48,6 +48,9 @@ public static class AkkaBootstrapExtension
 
                     registry.Register<ShardListener>(
                         system.ActorOf(resolver.Props<ShardListener>(), "shard-listener"));
+
+                    registry.Register<IngressListener>(
+                        system.ActorOf(resolver.Props<IngressListener>(), "ingress-listener"));
                 });
         });
 

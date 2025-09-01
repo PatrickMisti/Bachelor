@@ -6,6 +6,7 @@ using SystemTests;
 using Akka.Remote;
 using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
+using Infrastructure.Coordinator.PubSub;
 using Infrastructure.General.PubSub;
 using Infrastructure.Models;
 using Infrastructure.Shard.Messages;
@@ -79,4 +80,22 @@ static async Task<int> TestShardRegion(ActorSystem system, string driverId)
     }
 }
 
-await TestShardRegion(system, driverId);
+//await TestShardRegion(system, driverId);
+
+static async Task TestController(ActorSystem system)
+{
+    var cluster = Cluster.Get(system);
+    await MemberUpUtilities.WaitForMemberUp(system, TimeSpan.FromSeconds(30), cluster);
+
+    DistributedPubSub.Get(system);
+    await Task.Delay(1000);
+
+    var client = system.ActorOf(Props.Create(() => new IngressGhostActor()));
+
+
+    //client.Tell(IngressConnectivityRequest.Instance);
+
+    await system.WhenTerminated;
+}
+
+await TestController(system);

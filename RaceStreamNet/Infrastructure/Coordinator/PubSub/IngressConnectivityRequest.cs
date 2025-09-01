@@ -2,7 +2,7 @@
 
 namespace Infrastructure.Coordinator.PubSub;
 
-public record IngressConnectivityRequest
+public record IngressConnectivityRequest : IPubMessage
 {
     public static IngressConnectivityRequest Instance => new();
 

@@ -10,6 +10,8 @@ public sealed class PubSubFluent(IActorRef mediator, bool oneMessagePerGroup)
     public Publisher Ingress => new(mediator, PubSubMember.Ingress, oneMessagePerGroup);
     public Publisher Api => new(mediator, PubSubMember.Api, oneMessagePerGroup);
 
+    public Publisher Controller => new(mediator, PubSubMember.Controller, oneMessagePerGroup);
+
     public readonly struct Publisher(IActorRef mediator, PubSubMember topic, bool onePerGroup)
     {
         private string TopicName => topic.ToStr();

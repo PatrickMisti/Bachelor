@@ -1,15 +1,10 @@
 ﻿using Akka.Actor;
 using Akka.Cluster.Sharding;
-using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using Infrastructure.Cluster.Messages.RequestMessages;
-using Infrastructure.Cluster.Messages.ResponseMessage;
 using Infrastructure.Models;
 using Infrastructure.Shard.Messages;
 using Infrastructure.Testing;
-using IntegrationTests.Mock;
-using System.Threading;
 using Xunit;
 
 namespace IntegrationTests.ShardRegion;
