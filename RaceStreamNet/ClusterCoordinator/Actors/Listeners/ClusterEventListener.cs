@@ -93,7 +93,8 @@ public class ClusterEventListener : ReceiveActor
             .Subscribe(
                 Self,
                 ClusterEvent.SubscriptionInitialStateMode.InitialStateAsEvents,
-                typeof(ClusterEvent.IMemberEvent));
+                typeof(ClusterEvent.IMemberEvent),
+                typeof(ClusterEvent.IReachabilityEvent));
     }
 
     protected override void PostStop()

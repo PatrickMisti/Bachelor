@@ -38,26 +38,4 @@ public class ShardListener(IRequiredActor<ClusterController> controller) : Debou
         Receive<ShardConnectionRequest>(msg =>
             Sender.Tell(new ShardConnectionUpdateMessage(_activeBackends.Count > 0)));
     }
-
-    protected override void PreStart()
-    {
-        base.PreStart();
-        Logger.Debug("ShardListener PreStart");
-
-        // Cluster Subscription
-        Cluster.Get(Context.System)
-            .Subscribe(
-                Self, 
-                ClusterEvent.SubscriptionInitialStateMode.InitialStateAsSnapshot,
-            typeof(ClusterEvent.IMemberEvent),
-                typeof(ClusterEvent.IReachabilityEvent));
-    }
-
-    protected override void PostStop()
-    {
-        Logger.Debug("ShardListener PostStop");
-
-        Cluster.Get(Context.System).Unsubscribe(Self);
-        base.PostStop();
-    }
 }
