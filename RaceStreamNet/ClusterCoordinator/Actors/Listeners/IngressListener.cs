@@ -25,6 +25,7 @@ public class IngressListener(IRequiredActor<ClusterController> controller) : Deb
 
     private void HandleEvents()
     {
+        // External request from ingress to check if shard is available
         // Request from ingress if shard is available
         ReceiveAsync<IngressConnectivityRequest>(async _ =>
         {
@@ -35,6 +36,7 @@ public class IngressListener(IRequiredActor<ClusterController> controller) : Deb
             Sender.Tell(new IngressConnectivityResponse(isActive));
         });
 
+        // Internal request from controller to notify ingress
         // Auto send to ingress when shard status changes
         Receive<IngressConnectionCanActivated>(msg =>
         {
