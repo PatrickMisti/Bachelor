@@ -1,15 +1,10 @@
 ﻿using Akka.Actor;
 using Akka.Cluster;
-using Akka.Cluster.Sharding;
 using Infrastructure.Testing;
 using SystemTests;
-using Akka.Remote;
 using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
-using Infrastructure.Coordinator.PubSub;
-using Infrastructure.General.PubSub;
-using Infrastructure.Models;
-using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Models;
 
 var driverId = "VER";
 var host = "localhost";
@@ -23,7 +18,7 @@ var config = ConfigurationFactory
 // WICHTIG: Systemname identisch zum Service
 using var system = ActorSystem.Create("cluster-system", config);
 
-static async Task<int> TestShardRegion(ActorSystem system, string driverId)
+static async Task<int> TestShardRegion(ActorSystem system, DriverKey driverId)
 {
     try
     {

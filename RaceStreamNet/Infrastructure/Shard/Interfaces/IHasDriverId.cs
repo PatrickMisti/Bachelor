@@ -1,6 +1,8 @@
-﻿namespace Infrastructure.Shard.Interfaces;
+﻿using Infrastructure.Shard.Models;
+
+namespace Infrastructure.Shard.Interfaces;
 
 public interface IHasDriverId
 {
-    public string DriverId { get; }
+    DriverKey Key { get; }
 }

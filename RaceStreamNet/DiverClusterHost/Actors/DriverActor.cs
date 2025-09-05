@@ -1,10 +1,11 @@
 ﻿using Akka.Actor;
+using Akka.Cluster.Sharding;
 using Akka.Event;
 using Akka.Hosting;
 using DriverShardHost.Actors.Messages;
-using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Models;
 
 namespace DriverShardHost.Actors;
 
@@ -12,56 +13,145 @@ public class DriverActor : ReceiveActor
 {
     //private readonly ILoggingAdapter _logger = Logging.GetLogger(Context.System, nameof(DriverActor));
     private readonly ILoggingAdapter _logger = Context.GetLogger();
-    private readonly DriverState _state;
-    private readonly string _entityId;
+    private readonly DriverInfoState _state = new();
 
     private readonly IActorRef _handler;
 
 
     public DriverActor(IRequiredActor<TelemetryRegionHandler> handler)
     {
-        _entityId = Self.Path.Name;
-        _state = new();
         _handler = handler.ActorRef;
-        _logger.Info($"DriverActor constructor: {_entityId}");
+        _logger.Info($"DriverActor constructor: {Self.Path.Name}");
 
-        Receive<UpdateDriverTelemetry>(HandleUpdateDriverTelemetry);
-        Receive<GetDriverState>(HandleGetDriverState);
-    }
-
-    private void HandleUpdateDriverTelemetry(UpdateDriverTelemetry message)
-    {
-        string mid = message.DriverId;
-
-        // Guard: Safety–Net, that the message has a valid DriverId
-        if (!string.IsNullOrEmpty(mid) && mid != _entityId)
-        {
-            _logger.Warning("Ignoring telemetry for mismatched DriverId. Entity={EntityId}, Msg={MsgId}", _entityId, mid);
-            Sender.Tell(new Status.Failure(new DriverInShardNotFoundException($"DriverId mismatch. Entity={_entityId}, Msg={mid}")));
-            return;
-        }
-
-        _state.Apply(message);
-        _logger.Debug("Telemetry update for DriverId={DriverId} Lap={Lap} Pos={Pos}", _entityId, _state.LapNumber, _state.PositionOnTrack);
-
-        Sender.Tell(Status.Success.Instance);
-        _handler.Tell(new UpdatedDriverMessage(mid, _state));
-    }
-
-    private void HandleGetDriverState(GetDriverState message)
-    {
-        string mid = message.DriverId;
-
-        if (!string.IsNullOrEmpty(mid) && mid != _entityId)
-        {
-            Sender.Tell(DriverStateMessage.Failure(new DriverInShardNotFoundException(mid)));
-            return;
-        }
-
-        _logger.Debug("GetDriverState for DriverId={DriverId}", _entityId);
-        Sender.Tell(DriverStateMessage.Success(_entityId, _state));
+        Become(Uninitialized);
     }
 
     protected override void PreStart() => _logger.Debug("DriverActor({EntityId}) started", Self.Path.Name);
     protected override void PostStop() => _logger.Debug("DriverActor({EntityId}) stopped", Self.Path.Name);
+
+
+    private void Uninitialized()
+    {
+        Receive<CreateModelDriverMessage>(m =>
+        {
+            if (_state.Key is not null)
+            {
+                // Bereits initialisiert -> Test erwartet Status.Failure mit deiner Exception
+                Sender.Tell(new Status.Failure(
+                    new ActorInitializationException($"Already initialized as {_state.Key}")
+                ));
+                return;
+            }
+            _state.Apply(m);
+
+            _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
+
+            Sender.Tell(new CreatedDriverMessage(_state.Key));
+
+            // Optional: Idle-Passivation
+            Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
+
+            Become(Initialized);
+        });
+
+        Receive<StopEntity>(_ => Context.Stop(Self));
+
+        // Other Message: denied + passivate
+        ReceiveAny(msg =>
+        {
+            var entityId = Self.Path.Name; // Fallback falls Key noch leer
+            _logger.Warning($"Received {msg.GetType().Name} before initialization for entity {entityId}. Passivating.");
+
+            Sender.Tell(new NotInitializedMessage(entityId));
+            Context.Parent.Tell(new Passivate(new StopEntity()));
+        });
+
+        
+    }
+
+    private void Initialized()
+    {
+        Receive<UpdateTelemetryMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            _state.Apply(m);
+            _logger.Debug("Telemetry: {Id} speed={Speed} t={Ts:o}", _state.Key, m.Speed, m.TimestampUtc);
+            SendToHandler();
+        });
+
+        Receive<UpdatePositionMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            _state.Apply(m);
+            _logger.Debug("Position: {Id} pos={Pos} t={Ts:o}", _state.Key, m.PositionOnTrack, m.TimestampUtc);
+            SendToHandler();
+        });
+
+        Receive<UpdateIntervalMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            _state.Apply(m);
+            _logger.Debug("Interval: {Id} Δ={Gap}s t={Ts:o}", _state.Key, m.GapToLeaderSeconds, m.TimestampUtc);
+            SendToHandler();
+        });
+
+        Receive<RecordLapMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            var prev = _state.LapNumber;
+            _state.Apply(m);
+            _logger.Info($"Lap {m.LapNumber} for {m.Key} (prev={prev}) L={m.LapTime} S1={m.Sector1} S2={m.Sector2} S3={m.Sector3}");
+            SendToHandler();
+        });
+
+        Receive<UpdateStintMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            _state.Apply(m);
+            _logger.Info($"Stint {_state.Key}: {m.Compound} start={m.LapStart} end={m.LapEnd} age@start={m.TyreAgeAtStart}");
+            SendToHandler();
+        });
+
+        Receive<RecordPitStopMessage>(m =>
+        {
+            if (!KeysMatchOrFail(m.Key)) return;
+            _state.Apply(m);
+            _logger.Info($"Pit {_state.Key}: lap={m.LapNumber} duration={m.PitDuration}");
+            SendToHandler();
+        });
+
+        Receive<GetDriverStateMessage>(m =>
+        {
+            Sender.Tell(new DriverStateMessage(_state.Key, DriverStateDto.Create(_state)));
+        });
+
+        // Idle-Passivation
+        Receive<ReceiveTimeout>(_ =>
+        {
+            _logger.Info("Idle timeout for {Id}. Passivating.", _state.Key);
+            Context.Parent.Tell(new Passivate(new StopEntity()));
+        });
+
+        Receive<StopEntity>(_ => Context.Stop(Self));
+    }
+
+    private bool KeysMatchOrFail(DriverKey key)
+    {
+        if (KeyEquals(key)) return true;
+
+        // Send response if the key does not match
+        Sender.Tell(new Status.Failure(
+            new DriverInShardNotFoundException(key, $"Key is not {_state.Key}")
+        ));
+        return false;
+    }
+
+    private bool KeyEquals(DriverKey other) =>
+        _state.Key.SessionId == other.SessionId &&
+        _state.Key.DriverNumber == other.DriverNumber;
+
+    private void SendToHandler()
+    {
+        _handler.Tell(new UpdatedDriverMessage(_state.Key, DriverStateDto.Create(_state)));
+    }
 }

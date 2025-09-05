@@ -14,7 +14,7 @@ public class DemoApiActor : ReceivePubSubActor<IPubSubTopicApi>
         {
             // Handle the API message
             // For example, you can log it or process it
-            Console.WriteLine($"Received API message: {msg.DriverId}");
+            Console.WriteLine($"Received API message: {msg.Key.ToString()}");
             probe.Tell(msg);
         });
 

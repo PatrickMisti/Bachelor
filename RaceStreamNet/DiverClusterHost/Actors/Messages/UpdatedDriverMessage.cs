@@ -1,15 +1,14 @@
-﻿using Infrastructure.Models;
-using Infrastructure.Shard.Interfaces;
+﻿using Infrastructure.Shard.Interfaces;
+using Infrastructure.Shard.Models;
 
 namespace DriverShardHost.Actors.Messages;
 
-public sealed class UpdatedDriverMessage(string driverId, DriverState state) : IHasDriverId
+public sealed class UpdatedDriverMessage(DriverKey key, DriverStateDto? state) : IHasDriverId
 {
-    public string DriverId { get; } = driverId;
+    public DriverKey Key { get; set; } = key;
 
-    public DriverState State { get; set; } = state;
+    public DriverStateDto? State { get; set; } = state;
 
-    public UpdatedDriverMessage() : this(string.Empty, new())
-    {
-    }
+
+
 }

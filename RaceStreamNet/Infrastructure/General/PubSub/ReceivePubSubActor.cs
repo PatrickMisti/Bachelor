@@ -7,7 +7,7 @@ namespace Infrastructure.General.PubSub;
 public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash where TTopic : IPubSubTopic
 {
     private IActorRef _pubSubActorRef = ActorRefs.Nobody;
-    private readonly ILoggingAdapter _log = Context.GetLogger();
+    private readonly ILoggingAdapter _logger = Context.GetLogger();
 
     private const int ExpectedSubscriptions = 2;
     private int _currentSubscriptions = 0;
@@ -29,7 +29,7 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
             throw new ActorNotFoundException("Mediator not connected!");
 
         _member = PubSubTypeMapping.ToMember(typeof(TTopic)) ?? PubSubMember.All;
-        _log.Info($"Mediator is trying to connected to topic {_member.ToStr()}");
+        _logger.Info($"Mediator is trying to connected to topic {_member.ToStr()}");
 
         // All in group should grab notification
        _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
@@ -44,7 +44,7 @@ public class ReceivePubSubActor<TTopic> : ReceiveActor, IWithUnboundedStash wher
     {
         Receive<SubscribeAck>(msg =>
         {
-            _log.Info($"Grab Ack for {msg.Subscribe.Topic} with group ({msg.Subscribe.Group})");
+            _logger.Info($"Grab Ack for {msg.Subscribe.Topic} with group ({msg.Subscribe.Group})");
             _currentSubscriptions++;
 
             if (_currentSubscriptions < ExpectedSubscriptions) return;

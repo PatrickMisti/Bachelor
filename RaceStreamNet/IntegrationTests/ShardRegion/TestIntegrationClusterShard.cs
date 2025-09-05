@@ -2,8 +2,8 @@
 using Akka.Cluster.Sharding;
 using Akka.Configuration;
 using Akka.TestKit.Xunit2;
-using Infrastructure.Models;
 using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Models;
 using Infrastructure.Testing;
 using Xunit;
 

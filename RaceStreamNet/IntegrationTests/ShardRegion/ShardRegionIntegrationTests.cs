@@ -6,9 +6,9 @@ using Akka.TestKit.Xunit2;
 using DriverShardHost.Actors.Messages;
 using DriverShardHost.Config;
 using Infrastructure.General;
-using Infrastructure.Models;
 using Infrastructure.Shard;
 using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Models;
 using Infrastructure.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -82,8 +82,11 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
     public async Task Proxy_should_send_telemetry_and_fetch_state_from_backend_region()
     {
         var driverId = "DRIVER_44";
+        var driverNumber = 1;
 
         var upsert = new UpdateDriverTelemetry(
+            DriverNumber: (uint)driverNumber,
+            SessionId: 1111,
             DriverId: driverId,
             LapNumber: 12,
             PositionOnTrack: 3,
@@ -101,7 +104,7 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
         var ack = await _proxyRegion!.Ask<object>(upsert, TimeSpan.FromSeconds(5));
         Assert.NotNull(ack);
 
-        var resp = await _proxyRegion.Ask<DriverStateMessage>(new GetDriverState(driverId), TimeSpan.FromSeconds(10));
+        var resp = await _proxyRegion.Ask<DriverStateMessage>(new GetDriverState(driverNumber, driverNumber), TimeSpan.FromSeconds(10));
         Assert.NotNull(resp);
         Assert.True(resp.IsSuccess);
         Assert.Equal(driverId, resp.DriverId);
@@ -119,6 +122,8 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
         var driverId = "DRIVER_45";
         
         var upsert = new UpdateDriverTelemetry(
+            DriverNumber: 1,
+            SessionId: 1111,
             DriverId: driverId,
             LapNumber: 1,
             PositionOnTrack: 5,
@@ -135,14 +140,14 @@ public class ShardRegionIntegrationTests : TestKit, IAsyncLifetime
 
         await _proxyRegion!.Ask<Status>(upsert, TimeSpan.FromSeconds(5));
 
-        var wrongId = "DRIVER_XYZ56";
+        var wrongId = 11;
         var resp = await _proxyRegion.Ask<DriverStateMessage>(
-            new GetDriverState(wrongId),
+            new GetDriverState(wrongId, wrongId),
             TimeSpan.FromSeconds(5));
 
         Assert.NotNull(resp);
         Assert.False(resp.IsSuccess);
-        Assert.Equal(wrongId, resp.DriverId);
+        Assert.Equal($"{wrongId}_{wrongId}", resp.DriverId);
         Assert.NotNull(resp.Error);
         Assert.Null(resp.State);
     }

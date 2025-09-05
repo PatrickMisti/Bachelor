@@ -1,13 +1,13 @@
 ﻿using Infrastructure.General.Message;
-using Infrastructure.Models;
+using Infrastructure.Shard.Models;
 using Newtonsoft.Json;
 
 namespace Infrastructure.Shard.Messages.ResponseMessage;
 
 public sealed class GetDriverStateResponse : IPubMessage
 {
-    public string DriverId { get; }
-    public DriverState DriverState { get; }
+    public DriverKey? Key { get; }
+    public DriverStateDto? DriverState { get; }
     public bool IsSuccess { get; }
     public string ErrorMessage { get; } = string.Empty;
 
@@ -17,32 +17,32 @@ public sealed class GetDriverStateResponse : IPubMessage
     // public GetDriverStateResponse(string id, object? state, string? error) { ... }
 
     [JsonConstructor]
-    public GetDriverStateResponse(string driverId, DriverState driverState, bool isSuccess, string error)
+    public GetDriverStateResponse(DriverKey? key, DriverStateDto? driverState, bool isSuccess, string error)
     {
-        DriverId = driverId;
+        Key = key;
         DriverState = driverState;
         IsSuccess = isSuccess;
         ErrorMessage = error;
     }
     
-    public GetDriverStateResponse(string driverId, DriverState driverState)
+    public GetDriverStateResponse(DriverKey? key, DriverStateDto? driverState)
     {
-        DriverId = driverId;
+        Key = key;
         DriverState = driverState;
-        IsSuccess = true;
+        IsSuccess = key is not null && driverState is not null;
     }
 
     
-    public GetDriverStateResponse(string driverId, string errorMessage)
+    public GetDriverStateResponse(DriverKey? driverId, string errorMessage)
     {
-        DriverId = driverId ?? "";
-        DriverState = new DriverState();
+        Key = driverId ?? null;
+        DriverState = null;
         IsSuccess = false;
         ErrorMessage = errorMessage;
     }
 
     public override string ToString()
     {
-        return "GetDriverStateResponse { DriverId: " + DriverId + ", IsSuccess: " + IsSuccess + ", ErrorMessage: " + ErrorMessage + ", DriverState: " + (DriverState != null ? DriverState.ToString() : "null") + " }";
+        return "GetDriverStateResponse { DriverId: " + Key + ", IsSuccess: " + IsSuccess + ", ErrorMessage: " + ErrorMessage + ", DriverState: " + (DriverState != null ? DriverState.ToString() : "null") + " }";
     }
 }

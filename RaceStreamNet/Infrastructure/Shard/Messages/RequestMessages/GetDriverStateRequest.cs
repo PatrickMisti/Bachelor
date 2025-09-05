@@ -1,25 +1,31 @@
-﻿using Akka.Actor;
-using Infrastructure.General.Message;
+﻿using Infrastructure.General.Message;
+using Infrastructure.Shard.Interfaces;
+using Infrastructure.Shard.Models;
 using Newtonsoft.Json;
 
 namespace Infrastructure.Shard.Messages.RequestMessages;
 
-public sealed class GetDriverStateRequest : IPubMessage
+public sealed class GetDriverStateRequest : IHasDriverId, IPubMessage
 {
-    public string Id { get; set; } = string.Empty;
+    public DriverKey? Key { get; set; }
 
     [JsonConstructor]
     public GetDriverStateRequest()
     { }
 
     
-    public GetDriverStateRequest(string id)
+    public GetDriverStateRequest(int driverNumber, int sessionKey)
     {
-        Id = id;
+        Key = DriverKey.Create(sessionKey, driverNumber);
+    }
+
+    public GetDriverStateRequest(DriverKey key)
+    {
+        Key = key;
     }
 
     public override string ToString()
     {
-        return $"GetDriverStateRequest: {Id}";
+        return $"GetDriverStateRequest: {Key}";
     }
 }

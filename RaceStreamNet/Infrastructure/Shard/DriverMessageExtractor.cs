@@ -1,20 +1,18 @@
 ﻿using Akka.Cluster.Sharding;
 using System.Text.RegularExpressions;
-using DriverShardHost.Actors.Messages;
-using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Interfaces;
 
 namespace Infrastructure.Shard;
 
 public class DriverMessageExtractor(int maxNumberOfShards = 100) : HashCodeMessageExtractor(maxNumberOfShards)
 {
-    private static readonly Regex IdRegex = new(@"^[A-Z]{3}(_\d{1,2})?$", RegexOptions.Compiled);
+    private static readonly Regex IdRegex = new(@"^(?:[1-9]\d{0,2})_\d{4,7}$", RegexOptions.Compiled);
 
     public override string EntityId(object message)
     {
         string? id = message switch
         {
-            UpdateDriverTelemetry m => m.DriverId,
-            GetDriverState m => m.DriverId, // updatedDriverTelemetry should only be used for routing
+            IHasDriverId m => m.Key.ToString() ?? null,
             _ => null
         };
 

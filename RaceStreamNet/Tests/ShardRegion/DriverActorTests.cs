@@ -3,9 +3,9 @@ using Akka.Hosting;
 using Akka.TestKit.Xunit2;
 using DriverShardHost.Actors;
 using DriverShardHost.Actors.Messages;
-using Infrastructure.Models;
 using Infrastructure.Shard.Exceptions;
 using Infrastructure.Shard.Messages;
+using Infrastructure.Shard.Models;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
@@ -32,72 +32,63 @@ public sealed class DriverActorTests : TestKit
     public void UpdateDriverTelemetry_should_update_state_and_ack()
     {
         // Arrange: EntityId via ActorName simulation (like ShardRegion)
-        var entityId = "DRIVER_44";
+        var entityId = new DriverKey { DriverNumber = 1, SessionId = 1111 };
+
         // thows error wenn _telRegionHandler.tell in driveractor 
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId);
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId.ToString());
 
-        var upsert = new UpdateDriverTelemetry(
-            DriverId: entityId,
-            LapNumber: 12,
-            PositionOnTrack: 3,
-            Speed: 278.5,
-            DeltaToLeader: 1.234,
-            TyreLife: 10,
-            CurrentTyreCompound: TyreCompound.Soft,
-            PitStops: 1,
-            LastLapTime: TimeSpan.FromSeconds(92.345),
-            Sector1Time: TimeSpan.FromSeconds(29.1),
-            Sector2Time: TimeSpan.FromSeconds(31.2),
-            Sector3Time: TimeSpan.FromSeconds(32.0),
-            Timestamp: DateTime.UtcNow);
-
+        
         // Act
-        actor.Tell(upsert);
+        actor.Tell(new CreateModelDriverMessage(entityId)
+        {
+            CountryCode = "AT",
+            Acronym = "HSV",
+            TeamName = "Red Bull",
+            LastName = "Herbert",
+            FirstName = "Max"
+        });
 
         // Assert: Ack
-        ExpectMsg<Status.Success>(TimeSpan.FromSeconds(2));
+        ExpectMsg<CreatedDriverMessage>(TimeSpan.FromSeconds(2));
 
         // Query
-        actor.Tell(new GetDriverState(entityId));
+        actor.Tell(new GetDriverStateMessage(entityId));
         var resp = ExpectMsg<DriverStateMessage>(TimeSpan.FromSeconds(2));
 
         Assert.True(resp.IsSuccess);
         Assert.Equal(entityId, resp.DriverId);
         Assert.NotNull(resp.State);
-        Assert.Equal(upsert.LapNumber, resp.State!.LapNumber);
-        Assert.Equal(upsert.PositionOnTrack, resp.State.PositionOnTrack);
-        Assert.Equal(upsert.CurrentTyreCompound, resp.State.CurrentTyreCompound);
+        Assert.Equal(0, resp.State!.LapNumber);
+        Assert.Equal(0, resp.State.PositionOnTrack);
+        Assert.Equal(0, resp.State.TyreLife);
     }
 
     [Fact]
-    public void UpdateDriverTelemetry_with_wrong_id_should_fail_and_keep_state()
+    public async Task UpdateDriverTelemetry_with_wrong_id_should_fail_and_keep_state()
     {
-        var entityId = "DRIVER_11";
-        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId);
+        var entityId = new DriverKey { DriverNumber = 1, SessionId = 1111 };
+        var wrongEntity = new DriverKey { DriverNumber = 2, SessionId = 1111 };
+        var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), entityId.ToString());
+
+        // create Driver
+        actor.Tell(new CreateModelDriverMessage(entityId)
+        {
+            CountryCode = "AT",
+            Acronym = "HSV",
+            TeamName = "Red Bull",
+            LastName = "Herbert",
+            FirstName = "Max"
+        });
 
         // Update with wrong DriverId
-        var wrong = new UpdateDriverTelemetry(
-            DriverId: "DRIVER_12",
-            LapNumber: 1,
-            PositionOnTrack: 10,
-            Speed: 200,
-            DeltaToLeader: 10,
-            TyreLife: 20,
-            CurrentTyreCompound: TyreCompound.Medium,
-            PitStops: 0,
-            LastLapTime: null,
-            Sector1Time: null,
-            Sector2Time: null,
-            Sector3Time: null,
-            Timestamp: DateTime.UtcNow);
+        var wrong = new UpdateStintMessage(wrongEntity, TyreCompound.Soft , 2, 3, 0);
 
-        actor.Tell(wrong);
-        var failure = ExpectMsg<Status.Failure>(TimeSpan.FromSeconds(2));
+        var failure = await actor.Ask<Status.Failure>(wrong);
+        //var failure = ExpectMsg<Status.Failure>(TimeSpan.FromSeconds(2));
         Assert.IsType<DriverInShardNotFoundException>(failure.Cause);
 
         // State should not change
-        actor.Tell(new GetDriverState(entityId));
-        var resp = ExpectMsg<DriverStateMessage>();
+        var resp = await actor.Ask<DriverStateMessage>(new GetDriverStateMessage(entityId));
         Assert.True(resp.IsSuccess);
         Assert.Equal(entityId, resp.DriverId);
         Assert.NotNull(resp.State);
@@ -107,12 +98,12 @@ public sealed class DriverActorTests : TestKit
     [Fact]
     public void GetDriverState_with_wrong_id_should_return_failure_response()
     {
+        var entityId = new DriverKey { DriverNumber = 1, SessionId = 1111 };
         var actor = Sys.ActorOf(Props.Create(() => new DriverActor(_telRegionHandler.Object)), "DRIVER_X");
 
-        actor.Tell(new GetDriverState("ANOTHER_ID"));
-        var resp = ExpectMsg<DriverStateMessage>(TimeSpan.FromSeconds(2));
+        actor.Tell(new GetDriverStateMessage(entityId));
+        var resp = ExpectMsg<NotInitializedMessage>(TimeSpan.FromSeconds(2));
 
-        Assert.False(resp.IsSuccess);
-        Assert.IsType<DriverInShardNotFoundException>(resp.Error);
+        Assert.IsType<NotInitializedMessage>(resp);
     }
 }

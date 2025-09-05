@@ -4,24 +4,25 @@ using Akka.Event;
 using Infrastructure.General.PubSub;
 using Infrastructure.Shard.Messages.RequestMessages;
 using Infrastructure.Shard.Messages.ResponseMessage;
+using Infrastructure.Shard.Models;
 
 namespace SystemTests;
 
 public sealed class PubSubClientActor : ReceiveActor
 {
-    private readonly ILoggingAdapter _log = Context.GetLogger();
-    private readonly string _driverId;
+    private readonly ILoggingAdapter _logger = Context.GetLogger();
+    private readonly DriverKey _driverId;
     private IActorRef _mediator = ActorRefs.Nobody;
     Stopwatch _stopwatch = Stopwatch.StartNew();
 
-    public PubSubClientActor(string driverId)
+    public PubSubClientActor(DriverKey driverId)
     {
         _driverId = driverId;
 
         Receive<GetDriverStateResponse>(res =>
         {
-            //_log.Info("Received GetDriverStateResponse for {0}: {1}", res.DriverId, res.DriverState.ToString() ?? "(null)");
-            Console.WriteLine($"[OK] Driver={res.DriverId}");
+            //_logger.Info("Received GetDriverStateResponse for {0}: {1}", res.DriverId, res.DriverState.ToString() ?? "(null)");
+            Console.WriteLine($"[OK] Driver={res.Key}");
             //_stopwatch.Stop();
             //Console.WriteLine($"Stopwatch says{_stopwatch.ElapsedMilliseconds}ms");
             // Nicht sofort beenden – ein paar Sekunden „am Leben bleiben“, damit der Service uns nicht als flap sieht.
@@ -30,16 +31,16 @@ public sealed class PubSubClientActor : ReceiveActor
 
         ReceiveAny(msg =>
         {
-            _log.Info("Unexpected message: {0}", msg);
+            _logger.Info("Unexpected message: {0}", msg);
         });
 
         /*Receive<TestGetDriverState>(msg =>
         {
-            _log.Warning($"Got message {msg.Response.DriverId}");
+            _logger.Warning($"Got message {msg.Response.DriverId}");
         });*/
 
         var request = new GetDriverStateRequest(_driverId);
-        _log.Info("Start Test to ask Handler!");
+        _logger.Info("Start Test to ask Handler!");
         Context.System.PubSubGroup().Backend.Publish(request);
     }
 
@@ -54,7 +55,7 @@ public sealed class PubSubClientActor : ReceiveActor
 
         // Publish: Sender = Self, damit die Antwort an uns zurückkommt
 
-        _log.Info("Publishing GetDriverStateRequest({0}) to topic 'backend'", _driverId);
+        _logger.Info("Publishing GetDriverStateRequest({0}) to topic 'backend'", _driverId);
         _mediator.Tell(new Publish("backend", request), Self);*/
         
         //_stopwatch.Start();

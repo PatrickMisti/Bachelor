@@ -1,25 +1,25 @@
-﻿using Infrastructure.Models;
-using Infrastructure.Shard.Exceptions;
+﻿using Infrastructure.Shard.Exceptions;
+using Infrastructure.Shard.Models;
 
 namespace DriverShardHost.Actors.Messages;
 
 public sealed record DriverStateMessage
 {
-    public string DriverId { get; private set; }
-    public DriverState? State { get; private set; }
+    public DriverKey? DriverId { get; private set; }
+    public DriverStateDto? State { get; private set; }
     public Exception? Error { get; private set; }
     public bool IsSuccess { get; private set; }
 
     public DriverStateMessage() {}
 
-    public DriverStateMessage(string driverId, DriverState state)
+    public DriverStateMessage(DriverKey? driverId, DriverStateDto? state)
     {
         DriverId = driverId;
         State = state;
-        IsSuccess = true;
+        IsSuccess = (driverId is not null) && (true);
     }
 
-    public DriverStateMessage(string driverId, Exception error)
+    public DriverStateMessage(DriverKey driverId, Exception error)
     {
         DriverId = driverId;
         Error = error;
@@ -30,7 +30,7 @@ public sealed record DriverStateMessage
     {
     }
 
-    public static DriverStateMessage Success(string driverId, DriverState state) => new (driverId, state);
+    public static DriverStateMessage Success(DriverKey? driverId, DriverStateDto? state) => new (driverId, state);
 
     public static DriverStateMessage Failure(DriverInShardNotFoundException e) => new (e);
 }
