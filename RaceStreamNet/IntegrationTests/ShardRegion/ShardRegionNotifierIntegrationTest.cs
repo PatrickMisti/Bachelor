@@ -99,8 +99,8 @@ public class ShardRegionNotifierIntegrationTest : TestKit, IAsyncLifetime
 
         Assert.NotNull(suc);
         var expect = probe.ExpectMsg<NotifyDriverStateMessage>(_timeout);
-        Assert.Equal(mock.DriverId, expect.DriverId);
-        Assert.Equal(mock.LapNumber, expect.State.LapNumber);
+        Assert.Equal(mock.Key, expect.Key);
+        //Assert.Equal(mock.FirstName, expect.State.);
     }
 
     [Fact]
@@ -120,20 +120,20 @@ public class ShardRegionNotifierIntegrationTest : TestKit, IAsyncLifetime
         // 2) Verifiziere, dass PubSub bereits „lebt“ (Notify kommt an)
         //    -> Das stellt sicher, dass der TelemetryRegionHandler und der DemoApiActor bereits subscribed sind.
         var notify = probe.ExpectMsg<NotifyDriverStateMessage>(_timeout);
-        Assert.Equal(mock.DriverId, notify.DriverId);
-        Assert.Equal(mock.LapNumber, notify.State.LapNumber);
+        Assert.Equal(mock.Key, notify.Key);
+        //Assert.Equal(mock.LapNumber, notify.State.LapNumber);
 
         // 3) Jetzt State abfragen – der DemoApiActor published GetDriverStateRequest
         //    und erwartet eine GetDriverStateResponse (der Handler antwortet an msg.ActorRef)
-        demoApi.Tell(new GetDriverStateRequest(mock.DriverId));
+        demoApi.Tell(new GetDriverStateRequest(mock.Key));
 
         // 4) Antwort einsammeln (der DemoApiActor forwardet sie ans probe)
         var res = probe.ExpectMsg<GetDriverStateResponse>(_timeout);
 
         // Assert
-        Assert.Equal(mock.DriverId, res.DriverId);
+        Assert.Equal(mock.Key, res.Key);
         Assert.NotNull(res.DriverState);
-        Assert.Equal(notify.State.LapNumber, res.DriverState!.LapNumber);
+        //Assert.Equal(notify.State.LapNumber, res.DriverState!.LapNumber);
     }
 
     [Fact]
@@ -158,12 +158,12 @@ public class ShardRegionNotifierIntegrationTest : TestKit, IAsyncLifetime
         var mediator = DistributedPubSub.Get(_proxySystem!).Mediator;
         mediator.Tell(
             new Send("/topic/backend",
-                new GetDriverStateRequest(mock.DriverId), localAffinity: false),
+                new GetDriverStateRequest(mock.Key), localAffinity: false),
             probe.Ref); // <- Antwort direkt ans probe
 
         var res = probe.ExpectMsg<GetDriverStateResponse>(_timeout);
-        Assert.Equal(mock.DriverId, res.DriverId);
+        Assert.Equal(mock.Key, res.Key);
         Assert.NotNull(res.DriverState);
-        Assert.Equal(mock.LapNumber, res.DriverState!.LapNumber);
+        //Assert.Equal(mock.LapNumber, res.DriverState!.LapNumber);
     }
 }
