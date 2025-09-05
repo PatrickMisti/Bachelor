@@ -38,6 +38,23 @@ public static class AkkaBootstrapExtension
                     // options.Durable.Keys = new[] { "sharding.*" };
                     // options.Durable.Lmdb.Directory = "/var/lib/akka/ddata";
                     // options.Durable.Lmdb.MapSize = 512L * 1024 * 1024; 
+                    // Nur Sharding-Keys dauerhaft speichern (RememberEntities etc.)
+                    options.Durable.Keys = ["sharding.*"];
+
+                    // to store the data in an folder
+                    var baseDir = Path.Combine(
+                        AppContext.BaseDirectory,
+                        "db", "ddata",
+                        akkaHc.ClusterName,
+                        akkaHc.Role,
+                        akkaHc.Port.ToString()
+                    );
+                    Directory.CreateDirectory(baseDir);
+
+                    options.Durable.Lmdb.Directory = baseDir;
+                    options.Durable.Lmdb.MapSize = 512L * 1024 * 1024; // 512 MB
+                    // optional weitere Keys, wenn du eigene DData-Keys nutzt:
+                    // options.Durable.Keys = new[] { "sharding.*", "myapp.*" };
                 })
                 .WithShardRegion<DriverRegionMarker>(
                     typeName: akkaHc.ShardName,
@@ -55,7 +72,6 @@ public static class AkkaBootstrapExtension
                         RememberEntities = true,
                         // optional: use DData for state store
                         RememberEntitiesStore = RememberEntitiesStore.DData
-                        
                     })
                 .WithActors((system, registry, resolver) => 
                 {
