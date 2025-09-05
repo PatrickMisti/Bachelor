@@ -9,13 +9,13 @@ namespace ClusterCoordinator.Actors.Listeners;
 
 public class ClusterEventListener : ReceiveActor
 {
-    private readonly ILoggingAdapter _log = Context.GetLogger();
+    private readonly ILoggingAdapter _logger = Context.GetLogger();
 
     private readonly Dictionary<ClusterMemberEnum, HashSet<IActorRef>> _targets = new();
 
     public ClusterEventListener(IRequiredActor<ShardListener> shardListenerRef, IRequiredActor<IngressListener> ingressListenerRef)
     {
-        _log.Info("Start ClusterEventListener ");
+        _logger.Info("Start ClusterEventListener ");
         Add(ClusterMemberEnum.Backend, shardListenerRef.ActorRef);
         Add(ClusterMemberEnum.Ingress, ingressListenerRef.ActorRef);
 
@@ -31,13 +31,13 @@ public class ClusterEventListener : ReceiveActor
         switch (evt)
         {
             case ClusterEvent.MemberUp u:
-                _log.Info($"Cluster Member is Up {u}, {string.Join(',', u.Member.Roles)}");
+                _logger.Info($"Cluster Member is Up {u}, {string.Join(',', u.Member.Roles)}");
                 foreach (var s in u.Member.Roles)
                     Broadcast(ClusterMemberExtension.Parse(s), new IncreaseClusterMember(u.Member.Address));
                 break;
 
             case ClusterEvent.MemberRemoved r:
-                _log.Info($"Cluster Member is Removed {r}, {string.Join(',', r.Member.Roles)}");
+                _logger.Info($"Cluster Member is Removed {r}, {string.Join(',', r.Member.Roles)}");
                 foreach (var s in r.Member.Roles)
                     Broadcast(ClusterMemberExtension.Parse(s), new DecreaseClusterMember(r.Member.Address));
                 break;
@@ -49,13 +49,13 @@ public class ClusterEventListener : ReceiveActor
         switch (evt)
         {
             case ClusterEvent.UnreachableMember u:
-                _log.Info($"Cluster Member is unreachable {u}, {string.Join(',', u.Member.Roles)}");
+                _logger.Info($"Cluster Member is unreachable {u}, {string.Join(',', u.Member.Roles)}");
                 foreach (var s in u.Member.Roles)
                     Broadcast(ClusterMemberExtension.Parse(s), new DecreaseClusterMember(u.Member.Address));
                 break;
 
             case ClusterEvent.ReachableMember r:
-                _log.Info($"Cluster Member is unreachable {r}, {string.Join(',', r.Member.Roles)}");
+                _logger.Info($"Cluster Member is unreachable {r}, {string.Join(',', r.Member.Roles)}");
                 foreach (var s in r.Member.Roles)
                     Broadcast(ClusterMemberExtension.Parse(s), new IncreaseClusterMember(r.Member.Address));
                 break;
@@ -70,7 +70,7 @@ public class ClusterEventListener : ReceiveActor
             _targets[role] = set;
         }
         if (set.Add(target))
-            _log.Info("Added target {0} for role '{1}'", target.Path, role);
+            _logger.Info("Added target {0} for role '{1}'", target.Path, role);
     }
 
 
@@ -86,7 +86,7 @@ public class ClusterEventListener : ReceiveActor
     protected override void PreStart()
     {
         base.PreStart();
-        _log.Debug("ClusterEvent PreStart");
+        _logger.Debug("ClusterEvent PreStart");
 
         // Cluster Subscription
         Cluster.Get(Context.System)
@@ -99,7 +99,7 @@ public class ClusterEventListener : ReceiveActor
 
     protected override void PostStop()
     {
-        _log.Debug("ClusterEvent PostStop");
+        _logger.Debug("ClusterEvent PostStop");
 
         Cluster.Get(Context.System).Unsubscribe(Self);
         base.PostStop();
@@ -109,6 +109,6 @@ public class ClusterEventListener : ReceiveActor
     {
         base.PreRestart(reason, message);
 
-        _log.Info($"Restart ClusterEventListener because of exception {reason.Message}");
+        _logger.Info($"Restart ClusterEventListener because of exception {reason.Message}");
     }
 }
