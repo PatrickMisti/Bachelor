@@ -1,5 +1,4 @@
-﻿using Akka.DistributedData;
-using Infrastructure.Shard.Messages;
+﻿using Infrastructure.Shard.Messages;
 using Microsoft.VisualBasic.CompilerServices;
 
 namespace Infrastructure.Shard.Models;

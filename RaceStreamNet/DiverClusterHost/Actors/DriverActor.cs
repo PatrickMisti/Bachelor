@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.Cluster.Sharding;
+using Akka.DistributedData;
 using Akka.Event;
 using Akka.Hosting;
 using DriverShardHost.Actors.Messages;
@@ -34,23 +35,15 @@ public class DriverActor : ReceiveActor
     {
         Receive<CreateModelDriverMessage>(m =>
         {
-            if (_state.Key is not null)
-            {
-                // Bereits initialisiert -> Test erwartet Status.Failure mit deiner Exception
-                Sender.Tell(new Status.Failure(
-                    new ActorInitializationException($"Already initialized as {_state.Key}")
-                ));
-                return;
-            }
             _state.Apply(m);
-
             _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
 
             Sender.Tell(new CreatedDriverMessage(_state.Key));
 
             // Optional: Idle-Passivation
-            Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
+            //Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
 
+            // Become delete before receives
             Become(Initialized);
         });
 
@@ -65,13 +58,11 @@ public class DriverActor : ReceiveActor
             Sender.Tell(new NotInitializedMessage(entityId));
             Context.Parent.Tell(new Passivate(new StopEntity()));
         });
-
-        
     }
 
     private void Initialized()
     {
-        Receive<UpdateTelemetryMessage>(m =>
+       Receive<UpdateTelemetryMessage>(m =>
         {
             if (!KeysMatchOrFail(m.Key)) return;
             _state.Apply(m);
@@ -126,11 +117,11 @@ public class DriverActor : ReceiveActor
         });
 
         // Idle-Passivation
-        Receive<ReceiveTimeout>(_ =>
+        /*Receive<ReceiveTimeout>(_ =>
         {
             _logger.Info("Idle timeout for {Id}. Passivating.", _state.Key);
             Context.Parent.Tell(new Passivate(new StopEntity()));
-        });
+        });*/
 
         Receive<StopEntity>(_ => Context.Stop(Self));
     }
@@ -154,4 +145,10 @@ public class DriverActor : ReceiveActor
     {
         _handler.Tell(new UpdatedDriverMessage(_state.Key, DriverStateDto.Create(_state)));
     }
+}
+
+public static class DDataKeys
+{
+    public static readonly LWWDictionaryKey<string, DriverStateDto> DriverState =
+        new("driver-state");
 }

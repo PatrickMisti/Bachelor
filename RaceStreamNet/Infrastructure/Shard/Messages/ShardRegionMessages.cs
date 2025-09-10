@@ -4,7 +4,7 @@ using Infrastructure.Shard.Models;
 namespace Infrastructure.Shard.Messages;
 
 
-// CREATE (Meta/Stammdaten)
+// CREATE (Meta)
 public sealed record CreateModelDriverMessage : IHasDriverId
 {
     public DriverKey Key { get; set; }
@@ -13,6 +13,8 @@ public sealed record CreateModelDriverMessage : IHasDriverId
     public string Acronym { get; init; } // z.B. VER, HAM
     public string CountryCode { get; init; } // ISO-3166 (z.B. NL, GB)
     public string TeamName { get; init; }
+
+    public CreateModelDriverMessage() {}
 
     public CreateModelDriverMessage(DriverKey key)
     {
@@ -70,4 +72,25 @@ public sealed record StopEntity;
 
 public sealed record NotInitializedMessage(string EntityId);
 
-public sealed record CreatedDriverMessage(DriverKey Key) : IHasDriverId;
+public sealed record CreatedDriverMessage : IHasDriverId
+{
+    public DriverKey Key { get; set; }
+    public bool IsSuccess { get; private set; }
+    public string ErrorMsg { get; private set; } = string.Empty;
+
+    public CreatedDriverMessage()
+    {}
+
+    public CreatedDriverMessage(DriverKey key)
+    {
+        Key = key;
+        IsSuccess = true;
+    }
+
+    public CreatedDriverMessage(string errorMsg)
+    {
+        Key = null!;
+        IsSuccess = false;
+        ErrorMsg = errorMsg;
+    }
+}

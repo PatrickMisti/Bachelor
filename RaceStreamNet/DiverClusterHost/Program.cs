@@ -11,6 +11,7 @@ var akkaHc = new AkkaHostingConfig
     Role = ClusterMemberEnum.Backend.ToStr()
 };
 
+Console.Title = ClusterMemberEnum.Backend.ToStr() + " " + akkaHc.Port;
 // Serilog init
 builder.CreateLoggingAdapter();
 

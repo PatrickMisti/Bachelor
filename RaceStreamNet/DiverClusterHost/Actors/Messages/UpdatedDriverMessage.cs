@@ -8,7 +8,4 @@ public sealed class UpdatedDriverMessage(DriverKey key, DriverStateDto? state) :
     public DriverKey Key { get; set; } = key;
 
     public DriverStateDto? State { get; set; } = state;
-
-
-
 }
