@@ -4,6 +4,7 @@ using Akka.Persistence.Sql.Hosting;
 using ClusterCoordinator.Actors;
 using ClusterCoordinator.Actors.Listeners;
 using Infrastructure.General;
+using Infrastructure.Shard;
 
 namespace ClusterCoordinator.Config;
 
@@ -34,7 +35,7 @@ public static class AkkaBootstrapExtension
                         snap.AutoInitialize = true;
                         //snap.Identifier = "akka.persistence.snapshot-store.sqlite";
                     })*/
-                .WithSingleton<ClusterController>(
+                .WithSingleton<ClusterCoordinatorMarker>(
                     singletonName: akkaHc.Role,
                     propsFactory: (_, _, resolver) => resolver.Props<ClusterController>(),
                     options: new ClusterSingletonOptions { Role = akkaHc.Role }

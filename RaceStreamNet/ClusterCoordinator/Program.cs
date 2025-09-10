@@ -2,6 +2,7 @@ using ClusterCoordinator.Config;
 using Infrastructure.General;
 
 var builder = Host.CreateApplicationBuilder(args);
+Console.Title = ClusterMemberEnum.Controller.ToStr();
 
 var connectionString = "./DB/akka-cluster.db";
 var defaultPort = 6000;
