@@ -9,7 +9,7 @@ using ClusterCoordinator.Actors.Messages.Request;
 
 namespace ClusterCoordinator.Actors.Listeners;
 
-public class ShardListener(IRequiredActor<ClusterController> controller) : DebounceBaseListener(controller.ActorRef)
+public class ShardListener(IActorRef controller) : DebounceBaseListener(controller)
 {
     private readonly HashSet<Address> _activeBackends = new();
 

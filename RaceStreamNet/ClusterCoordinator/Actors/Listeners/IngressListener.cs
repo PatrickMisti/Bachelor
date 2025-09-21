@@ -12,7 +12,7 @@ using Infrastructure.General.PubSub;
 
 namespace ClusterCoordinator.Actors.Listeners;
 
-public class IngressListener(IRequiredActor<ClusterController> controller) : DebounceBaseListener(controller.ActorRef)
+public class IngressListener(IActorRef controller) : DebounceBaseListener(controller)
 {
     private readonly HashSet<Address> _activeIngress = new();
 

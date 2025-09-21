@@ -42,16 +42,17 @@ public static class AkkaBootstrapExtension
                 )
                 .WithActors((system, registry, resolver) =>
                 {
+                    var controller = registry.Get<ClusterCoordinatorMarker>();
                     // Restart after exception throws
                     // else supervisor strategy is needed
                     registry.Register<ClusterEventListener>(
                         system.ActorOf(resolver.Props<ClusterEventListener>(), "cluster-event-listener"));
 
-                    registry.Register<ShardListener>(
-                        system.ActorOf(resolver.Props<ShardListener>(), "shard-listener"));
-
                     registry.Register<IngressListener>(
-                        system.ActorOf(resolver.Props<IngressListener>(), "ingress-listener"));
+                        system.ActorOf(resolver.Props<IngressListener>(controller), "ingress-listener"));
+
+                    registry.Register<ShardListener>(
+                        system.ActorOf(resolver.Props<ShardListener>(controller), "shard-listener"));
                 });
         });
 
