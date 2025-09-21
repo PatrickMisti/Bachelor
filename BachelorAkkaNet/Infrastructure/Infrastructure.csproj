@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Akka" />
+    <PackageReference Include="Akka.Cluster.Tools" />
+  </ItemGroup>
+
+</Project>

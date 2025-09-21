@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36511.14 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FormulaOneAkkaNet", "FormulaOneAkkaNet\FormulaOneAkkaNet.csproj", "{4D7FAED9-4477-4DD7-AC78-5835FE382688}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{D3A93837-A993-442A-B633-8D2A537228BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4D7FAED9-4477-4DD7-AC78-5835FE382688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D7FAED9-4477-4DD7-AC78-5835FE382688}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D7FAED9-4477-4DD7-AC78-5835FE382688}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D7FAED9-4477-4DD7-AC78-5835FE382688}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3A93837-A993-442A-B633-8D2A537228BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3A93837-A993-442A-B633-8D2A537228BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3A93837-A993-442A-B633-8D2A537228BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3A93837-A993-442A-B633-8D2A537228BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D26AA283-DE68-457F-BB73-4ECD5FFC06F6}
+	EndGlobalSection
+EndGlobal

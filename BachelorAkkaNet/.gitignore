@@ -1,0 +1,99 @@
+## Ignore Visual Studio temporary files, build results, and
+## user-specific files
+
+# Build results
+bin/
+obj/
+[Ll]og/
+[Bb]uild/
+[Bb]uild[Ll]og.*
+*.log
+.vs
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Mono Auto Generated Files
+mono_crash.*
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# DotCover
+*.dotCover
+
+# NCrunch
+*.ncrunch*
+.*crunch*.local.xml
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# DotTrace
+*.dotTrace
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# VS Code
+.vscode/
+
+# Others
+*.db
+*.DS_Store
+*.orig
+*.rej
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+*.psmdcp
+*.nupkg.sha512
+.nuget/
+packages/
+# If using package restore
+**/packages/*/
+!**/packages/build/
+!**/packages/repositories.config
+
+# Test Results
+[Tt]est[Rr]esult*/
+*.VisualState.xml
+TestResult.xml
+*.coverage
+*.coveragexml
+
+# MSBuild Binary and Cache
+*.cache
+*.mdb
+
+# Logs
+*.log
+
+# Deployment
+*.publish/
+.publish/
+*.deploy/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local secrets
+secrets.json
+appsettings.*.local.json
