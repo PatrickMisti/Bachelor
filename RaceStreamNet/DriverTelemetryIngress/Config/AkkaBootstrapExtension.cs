@@ -1,17 +1,29 @@
-﻿using Akka.Actor;
-using Akka.Cluster.Hosting;
+﻿using Akka.Cluster.Hosting;
 using Akka.Hosting;
-using Akka.Streams;
 using DriverTelemetryIngress.Actors;
+using DriverTelemetryIngress.Bridge;
 using Infrastructure.General;
 using Infrastructure.Shard;
-using Infrastructure.Shard.Messages;
-using Infrastructure.Shard.Models;
 
 namespace DriverTelemetryIngress.Config;
 
 public static class AkkaBootstrapExtension
 {
+    private static readonly string DefaultUrl = "https://api.openf1.org";
+
+    public static IServiceCollection ConfigureHttp(this IServiceCollection sp, string? url = null)
+    {
+        sp.AddHttpClient<IHttpWrapperClient, OpenF1Client>(client =>
+        {
+            // Set the base address for the HttpClient
+            client.BaseAddress = new Uri(url ?? DefaultUrl);
+            // Set a reasonable timeout for requests
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        return sp;
+    }
+
     public static IServiceCollection ConfigureStreams(this IServiceCollection sp, AkkaHostingConfig akkaHc)
     {
         sp.AddAkka(akkaHc.ClusterName, config =>
@@ -24,27 +36,26 @@ public static class AkkaBootstrapExtension
                     roleName: null!,
                     messageExtractor: new DriverMessageExtractor())
                 .WithSingletonProxy<ClusterCoordinatorMarker>(
-                    singletonName: ClusterMemberEnum.Controller.ToStr())
+                    singletonName: ClusterMemberEnum.Controller.ToStr(),
+                    singletonManagerName: ClusterMemberEnum.Controller.ToStr())
                 .WithActors((system, registry, resolver) =>
                 {
                     // actor for handling shard region proxy messages
-                    var proxyShard = system.ActorOf(resolver.Props<ShardRegionProxy>(), "proxy");
-                    registry.Register<ShardRegionProxy>(proxyShard);
+                    // not use only testing
+                    // registry.Register<ShardRegionProxy>(system.ActorOf(resolver.Props<ShardRegionProxy>(), "proxy"));
 
-                    //proxyShard.Tell((object)new CreateModelDriverMessage(DriverKey.Create(1111, 11)!, "Max", "Verstappen", "VER", "NED", "Red Bull"));
-                    registry.Register<ControllerHandlerActor>(system.ActorOf(resolver.Props<ControllerHandlerActor>(), "controller-handler"));
-
-                    proxyShard.Tell((object)new CreateModelDriverMessage(DriverKey.Create(2222, 15)!, "Max", "Verstappen", "VER", "NED", "Red Bull"));
-                    proxyShard.Tell(new UpdateTelemetryMessage(DriverKey.Create(2222,15)!, 200, DateTime.Now));
+                    registry.Register<ControllerHandlerActor>(
+                        system.ActorOf(resolver.Props<ControllerHandlerActor>(), "controller-handler"));
                 });
         });
 
+        // Not needed with PreStart Context.System.Materializer() in actors
         // Register Materializer
-        sp.AddSingleton<IMaterializer>(ctx =>
+        /*sp.AddSingleton<IMaterializer>(ctx =>
         {
             var mat = ctx.GetRequiredService<ActorSystem>();
             return mat.Materializer();
-        });
+        });*/
 
         return sp;
     }

@@ -18,7 +18,9 @@ Console.Title = ClusterMemberEnum.Ingress.ToStr() + " " + akkaHc.Port;
 builder.CreateLoggingAdapter();
 
 // Configure Akka.NET
-builder.Services.ConfigureStreams(akkaHc);
+builder.Services
+    .ConfigureHttp()
+    .ConfigureStreams(akkaHc);
 
 var host = builder.Build();
 host.Run();
