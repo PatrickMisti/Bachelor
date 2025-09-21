@@ -26,7 +26,7 @@ akka {{
   }}
 
   cluster {{
-    roles = [ ""ingress"" ]
+    roles = [ ""api"" ]
     # exakt wie dein Service:
     seed-nodes = [
       ""akka.tcp://cluster-system@localhost:5000""

@@ -1,10 +1,12 @@
 ﻿using Akka.Actor;
 using Akka.Cluster;
-using Infrastructure.Testing;
-using SystemTests;
 using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
+using Infrastructure.Cluster;
+using Infrastructure.General.PubSub;
 using Infrastructure.Shard.Models;
+using Infrastructure.Testing;
+using SystemTests;
 
 var driverId = "VER";
 var host = "localhost";
@@ -93,4 +95,17 @@ static async Task TestController(ActorSystem system)
     await system.WhenTerminated;
 }
 
-await TestController(system);
+//await TestController(system);
+
+static async Task TestSystem(ActorSystem system)
+{
+    var cluster = Cluster.Get(system);
+    await MemberUpUtilities.WaitForMemberUp(system, TimeSpan.FromSeconds(30), cluster);
+
+    DistributedPubSub.Get(system);
+    await Task.Delay(1000);
+
+    system.PubSub().Ingress.Publish(new IngressSessionRaceMessage(9158));
+}
+
+await TestSystem(system);
