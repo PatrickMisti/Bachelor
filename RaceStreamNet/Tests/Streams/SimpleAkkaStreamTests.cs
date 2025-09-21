@@ -1,7 +1,6 @@
 ﻿using Akka.Streams;
 using Akka.Streams.Dsl;
 using Akka.TestKit.Xunit2;
-using Akka.Util;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -33,8 +32,8 @@ public class SimpleAkkaStreamTests(ITestOutputHelper output) : TestKit(TestConfi
     }
 
     [Fact]
-    public Task Test_Akka_Stream_Check_Source_Options()
+    public void Test_Akka_Stream_Check_Source_Options()
     {
-        
+        Output.WriteLine("Source Options:");
     }
 }
