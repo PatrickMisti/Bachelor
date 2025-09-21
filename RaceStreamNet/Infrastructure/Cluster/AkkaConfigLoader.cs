@@ -1,10 +1,10 @@
 ﻿using Akka.Configuration;
 
-namespace Infrastructure.Cluster.Config;
+namespace Infrastructure.Cluster;
 
 public static class AkkaConfigLoader
 {
-    public static async Task<Akka.Configuration.Config> LoadWithPlaceholdersAsync(string filePath, Dictionary<string, string> replacements)
+    public static async Task<Config> LoadWithPlaceholdersAsync(string filePath, Dictionary<string, string> replacements)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"HOCON file not found at: {filePath}");
@@ -18,7 +18,7 @@ public static class AkkaConfigLoader
         return ConfigurationFactory.ParseString(content);
     }
 
-    public static async Task<Akka.Configuration.Config> LoadAsync(
+    public static async Task<Config> LoadAsync(
         string filePath,
         int port,
         int? seedPort,

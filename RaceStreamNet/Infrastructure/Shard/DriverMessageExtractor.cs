@@ -17,8 +17,8 @@ public class DriverMessageExtractor(int maxNumberOfShards = 100) : HashCodeMessa
         };
 
         // check if regex is correct else no routing
-        if (string.IsNullOrWhiteSpace(id) || !IdRegex.IsMatch(id))
-            return null!;
+        /*if (string.IsNullOrWhiteSpace(id) || !IdRegex.IsMatch(id))
+            return null!;*/
 
         return id!;
     }
