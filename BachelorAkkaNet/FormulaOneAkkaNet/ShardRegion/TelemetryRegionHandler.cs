@@ -61,6 +61,7 @@ public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> sh
 
     private void NotifyUpdatedDriver(UpdatedDriverMessage msg)
     {
+        _logger.Info($"Send updated state to api {msg.Key.DriverNumber}");
         Context.PubSub().Api.Publish(new NotifyDriverStateMessage(msg.Key, msg.State));
     }
 

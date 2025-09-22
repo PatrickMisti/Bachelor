@@ -44,8 +44,8 @@ public static class DefaultServiceProviderExtensions
             .WithClustering(
                 new ClusterOptions
                 {
-                    SeedNodes = config.SeedNodes,
-                    Roles = [config.Role], // else config.Roles = config.Role for single role
+                    SeedNodes = config.Roles.Count > 1 ? config.SeedNodes : [config.SeedNodes.First()],
+                    Roles = config.Roles.ToArray()
                 })
             .WithDistributedPubSub(role: null!);
 

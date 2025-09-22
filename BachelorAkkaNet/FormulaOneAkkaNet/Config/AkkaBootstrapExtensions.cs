@@ -20,15 +20,28 @@ internal static class AkkaBootstrapExtensions
             akka.UseAkkaLogger();
             akka.UseRemoteCluster(akkaHc);
 
+            if (akkaHc.Roles.Contains(ClusterMemberRoles.Controller.ToStr()))
+                akka.RegisterCoordinator(akkaHc);
 
+            if (akkaHc.Roles.Contains(ClusterMemberRoles.Backend.ToStr()))
+                akka.RegisterShardRegion(akkaHc);
+
+            if (akkaHc.Roles.Contains(ClusterMemberRoles.Ingress.ToStr()))
+                akka.RegisterIngress(akkaHc);
+
+            if (!akkaHc.Roles.Contains(ClusterMemberRoles.Controller.ToStr()))
+                akka.RegisterControllerProxy();
+            // if (akkaHc.Roles.Contains(ClusterMemberRoles.Api.ToStr()))
         });
         return sp;
     }
 
-    private static AkkaConfigurationBuilder RegisterCoordinator(AkkaConfigurationBuilder config, AkkaConfig akkaHc)
+    private static void RegisterCoordinator(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
     {
+        string role = ClusterMemberRoles.Controller.ToStr();
+
         config.WithSingleton<ClusterCoordinatorMarker>(
-                singletonName: akkaHc.Role,
+                singletonName: role, // akkaHc.Role,
                 propsFactory: (_, _, resolver) => resolver.Props<ClusterCoordinator>(),
                 options: new ClusterSingletonOptions { Role = akkaHc.Role })
             .WithActors((system, registry, resolver) =>
@@ -37,20 +50,23 @@ internal static class AkkaBootstrapExtensions
                 // Restart after exception throws
                 // else supervisor strategy is needed
                 registry.Register<ClusterEventListener>(
-                    system.ActorOf(resolver.Props<ClusterEventListener>(), "cluster-event-listener"));
+                    system.ActorOf(resolver.Props<ClusterEventListener>(),
+                        "cluster-event-listener"));
 
                 registry.Register<IngressListener>(
-                    system.ActorOf(resolver.Props<IngressListener>(controller), "ingress-listener"));
+                    system.ActorOf(resolver.Props<IngressListener>(controller),
+                        "ingress-listener"));
 
                 registry.Register<ShardListener>(
-                    system.ActorOf(resolver.Props<ShardListener>(controller), "shard-listener"));
+                    system.ActorOf(resolver.Props<ShardListener>(controller),
+                        "shard-listener"));
             });
-
-        return config;
     }
 
-    private static AkkaConfigurationBuilder RegisterShardRegion(AkkaConfigurationBuilder config, AkkaConfig akkaHc, IMessageExtractor? ex = null)
+    private static void RegisterShardRegion(this AkkaConfigurationBuilder config, AkkaConfig akkaHc, IMessageExtractor? ex = null)
     {
+        string role = ClusterMemberRoles.Backend.ToStr();
+
         var extractor = ex ?? new DriverMessageExtractor();
 
         config.WithShardingDistributedData(options =>
@@ -92,7 +108,7 @@ internal static class AkkaBootstrapExtensions
                 messageExtractor: extractor,
                 shardOptions: new ShardOptions
                 {
-                    Role = akkaHc.Role,
+                    Role = role, // akkaHc.Role,
                     // passivate idle entities after 5 minute
                     PassivateIdleEntityAfter = TimeSpan.FromMinutes(5),
                     // Use DData for state store needed for sharding persistence
@@ -107,19 +123,14 @@ internal static class AkkaBootstrapExtensions
                 registry.Register<TelemetryRegionHandler>(
                     system.ActorOf(resolver.Props<TelemetryRegionHandler>(),
                         "telemetry-region-handler")));
-
-        return config;
     }
 
-    private static AkkaConfigurationBuilder RegisterIngress(AkkaConfigurationBuilder config, AkkaConfig akkaHc)
+    private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
     {
-        config.WithShardRegionProxy<DriverRegionMarker>(
+        config.WithShardRegionProxy<DriverRegionProxyMarker>(
                 typeName: akkaHc.ShardName,
-                roleName: null!,
+                roleName: ClusterMemberRoles.Backend.ToStr(), // null!, <-- when all nodes can host the shard region
                 messageExtractor: new DriverMessageExtractor())
-            .WithSingletonProxy<ClusterCoordinatorMarker>(
-                singletonName: ClusterMemberRoles.Controller.ToStr(),
-                singletonManagerName: ClusterMemberRoles.Controller.ToStr())
             .WithActors((system, registry, resolver) =>
             {
                 // actor for handling shard region proxy messages
@@ -127,9 +138,15 @@ internal static class AkkaBootstrapExtensions
                 // registry.Register<ShardRegionProxy>(system.ActorOf(resolver.Props<ShardRegionProxy>(), "proxy"));
 
                 registry.Register<IngressControllerActor>(
-                    system.ActorOf(resolver.Props<IngressControllerActor>(), "controller-handler"));
+                    system.ActorOf(resolver.Props<IngressControllerActor>(),
+                        "controller-handler"));
             });
+    }
 
-        return config;
+    private static void RegisterControllerProxy(this AkkaConfigurationBuilder config)
+    {
+        config.WithSingletonProxy<ClusterCoordinatorProxyMarker>(
+            singletonName: ClusterMemberRoles.Controller.ToStr(),
+            singletonManagerName: ClusterMemberRoles.Controller.ToStr());
     }
 }

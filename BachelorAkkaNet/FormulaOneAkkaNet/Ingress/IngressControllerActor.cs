@@ -27,7 +27,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         var system = Context.System;
         var mat = system.Materializer();
 
-        var driverProxy = ActorRegistry.For(system).Get<DriverRegionMarker>();// IRegisteredActor<DriverRegionMarker>.ActorRef;
+        var driverProxy = ActorRegistry.For(system).Get<DriverRegionProxyMarker>();// IRegisteredActor<DriverRegionMarker>.ActorRef;
         _pipeline = new IngressPipeline(Context.System, mat, driverProxy);
         _sp = sp;
     }
@@ -90,7 +90,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
     private async Task StartPushStreamClient(int sessionKey)
     {
         var http = _sp.GetRequiredService<IHttpWrapperClient>();
-        // var list = await http.FetchNextBatch(sessionKey, CancellationToken.None);
+        var list = await http.FetchNextBatch(sessionKey, CancellationToken.None);
 
         if (_pipeline is { IsPushMode: false, IsRunning: false } /*|| list is null*/)
         {
@@ -100,7 +100,6 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         // fire and forget
         var driver = await http.GetDriversAsync(sessionKey, CancellationToken.None);
-        //var data = list.ToList();
 
         _log.Info("Start Http Clipping");
         if (driver is null)
@@ -113,9 +112,9 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         _log.Info("Sent {0} drivers to pipeline for session {1}", driver.Count, sessionKey);
 
-        //await _pipeline.OfferAsync(data);
+        await _pipeline.OfferAsync(list.ToList());
 
-        //_log.Info("Sent {0} data points to pipeline for session {1}", data.Count, sessionKey);
+        _log.Info("Sent {0} data points to pipeline for session {1}", list.Count, sessionKey);
     }
 
     protected override void PostStop()

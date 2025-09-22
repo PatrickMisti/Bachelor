@@ -23,7 +23,7 @@ public class AkkaConfig
     // Roles for the cluster nodes
     // Roles what this node can perform
     // Should be split else all nodes will have all roles
-    // public List<string>? Roles { get; set; }
+    public List<string> Roles { get; set; } = new();
 
     // Default role for the cluster nodes
     public required string Role { get; set; }
