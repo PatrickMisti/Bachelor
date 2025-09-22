@@ -5,7 +5,7 @@ namespace Infrastructure.ShardRegion.Messages;
 
 public sealed class GetDriverStateRequest : IHasDriverId, IPubMessage
 {
-    public DriverKey? Key { get; set; }
+    public DriverKey Key { get; set; }
 
     [JsonConstructor]
     public GetDriverStateRequest()

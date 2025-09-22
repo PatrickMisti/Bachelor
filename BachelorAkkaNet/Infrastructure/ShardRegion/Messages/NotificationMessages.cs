@@ -2,12 +2,18 @@
 
 namespace Infrastructure.ShardRegion.Messages;
 
-public record NotifyDriverStateMessage(DriverKey? Key, DriverStateDto? State) : IPubMessage
+public record NotifyDriverStateMessage : IPubMessage
 {
-    public NotifyDriverStateMessage(int driverId, int sessionKey, DriverStateDto state)
-        : this(DriverKey.Create(sessionKey, driverId), state)
+    public DriverKey Key { get; set; }
+    public DriverStateDto State { get; set; }
+
+
+    public NotifyDriverStateMessage(DriverKey key, DriverStateDto? state)
     {
+        Key = key;
+        State = state;
     }
+
 
     public override string ToString()
     {
