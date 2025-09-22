@@ -86,21 +86,12 @@ internal static class AkkaBootstrapExtensions
                 // - Default is ~1000, practical range is 500–5000.
                 // Warning: very small values (e.g. 3) can cause excessive gossip traffic!
                 options.MaxDeltaElements = 2000;
+                // optional: enable durable storage of DData to survive node restarts
+                options.Durable.Keys = [];
                 // optional: DData-Durability (local LMDB-Puffer)
                 // options.Durable.Keys = new[] { "sharding.*" };
                 // options.Durable.Lmdb.Directory = "/var/lib/akka/ddata";
                 // options.Durable.Lmdb.MapSize = 512L * 1024 * 1024; 
-                // Nur Sharding-Keys dauerhaft speichern (RememberEntities etc.)
-                //options.Durable.Keys = ["sharding.*"];
-                //var dir = Directory.GetCurrentDirectory();
-                // to store the data in an folder
-                //var baseDir = Path.Combine(dir, "db");
-                //Directory.CreateDirectory(baseDir);
-
-                //options.Durable.Lmdb.Directory = baseDir;
-                options.Durable.Lmdb.MapSize = 512L * 1024 * 1024; // 512 MB
-                // optional weitere Keys, wenn du eigene DData-Keys nutzt:
-                // options.Durable.Keys = new[] { "sharding.*", "myapp.*" };
             })
             .WithShardRegion<DriverRegionMarker>(
                 typeName: akkaHc.ShardName,

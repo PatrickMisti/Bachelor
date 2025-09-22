@@ -170,11 +170,7 @@ public class IngressPipeline
         if (_mode != Mode.Push || _queue is null) return;
 
         foreach (var dto in list)
-        {
-            var result = await _queue.OfferAsync(dto).ConfigureAwait(false);
-            if (result is QueueOfferResult.Enqueued)
-                _log.Warning("IngressPipeline: DTO not enqueued, result was {0}.", result);
-        }
+            await _queue.OfferAsync(dto).ConfigureAwait(false);
     }
 
     // ---------- intern ----------
