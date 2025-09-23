@@ -136,7 +136,7 @@ internal static class AkkaBootstrapExtensions
 
     private static void RegisterControllerProxy(this AkkaConfigurationBuilder config)
     {
-        config.WithSingletonProxy<ClusterCoordinatorProxyMarker>(
+        config.WithSingletonProxy<ClusterCoordinatorMarker>(
             singletonName: ClusterMemberRoles.Controller.ToStr(),
             singletonManagerName: ClusterMemberRoles.Controller.ToStr());
     }
