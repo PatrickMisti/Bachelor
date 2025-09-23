@@ -1,6 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.Event;
-using FormulaOneAkkaNet.Ingress.Messages;
+using Infrastructure.General;
 using Infrastructure.Http;
 
 namespace FormulaOneAkkaNet.Ingress;
