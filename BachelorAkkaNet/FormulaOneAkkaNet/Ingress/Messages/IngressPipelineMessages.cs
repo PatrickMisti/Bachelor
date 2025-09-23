@@ -1,26 +1,6 @@
 ﻿namespace FormulaOneAkkaNet.Ingress.Messages;
 
 /// <summary>
-/// Message to initiate the stream.
-/// </summary>
-public sealed record StreamInit
-{
-    public static readonly StreamInit Instance = new();
-    private StreamInit() { }
-}
-public sealed record StreamAck
-{
-    public static readonly StreamAck Instance = new();
-    private StreamAck() { }
-}
-
-public sealed record StreamCompleted
-{
-    public static readonly StreamCompleted Instance = new();
-    private StreamCompleted() { }
-}
-
-/// <summary>
 /// to switch between push and polling mode
 /// </summary>
 public sealed record UsePushStream
