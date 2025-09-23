@@ -55,4 +55,6 @@ public class IngressWorkerActor : ReceiveActor
             }
         });
     }
+
+    public static Props Prop(IActorRef shardProxy) => Props.Create(() => new IngressWorkerActor(shardProxy));
 }

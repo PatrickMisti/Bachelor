@@ -144,12 +144,6 @@ public class IngressPipeline
         _log.Info("IngressPipeline started in POLLING mode every {0} with {1} workers.", interval, workerCount);
     }
 
-    public void Stop()
-    {
-        StopInternal();
-        _log.Info("IngressPipeline: stopped.");
-    }
-
     public async Task<bool> OfferAsync(IOpenF1Dto dto)
     {
         if (_mode != Mode.Push || _queue is null) return false;
@@ -171,6 +165,11 @@ public class IngressPipeline
 
         foreach (var dto in list)
             await _queue.OfferAsync(dto).ConfigureAwait(false);
+    }
+    public void Stop()
+    {
+        StopInternal();
+        _log.Info("IngressPipeline: stopped.");
     }
 
     // ---------- intern ----------
@@ -194,10 +193,10 @@ public class IngressPipeline
     {
         var list = new List<IActorRef>(workerCount);
         for (var i = 0; i < workerCount; i++)
-        {
-            var w = _system.ActorOf(Props.Create(() => new IngressWorkerActor(_driverProxy)), $"ingress-worker-{i + 1}");
-            list.Add(w);
-        }
+            list.Add(_system.ActorOf(
+                IngressWorkerActor.Prop(_driverProxy),
+                $"ingress-worker-{i + 1}"));
+        
         return list;
     }
 }
