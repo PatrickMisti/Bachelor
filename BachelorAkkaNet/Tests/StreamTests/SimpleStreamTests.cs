@@ -142,7 +142,6 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
         downSub.Cancel();
     }
 
-    static int inFlowOne = 0;
     [Fact]
     public void Broadcast_two_slow_branches_should_limit_upstream_requests()
     {
@@ -165,7 +164,6 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
                     .SelectAsync(2, async x =>
                     {
                         await Task.Delay(100);
-                        log.Info($"In slow flow 1 with element {x} is in flow one {++inFlowOne}");
                         return x * 2;
                     })
                     //.WithAttributes(Attributes.CreateInputBuffer(1, 1))
@@ -206,6 +204,59 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
         sub.ExpectNext();
 
         downstream.Cancel();
+    }
+
+    [Fact]
+    public void Balance_should_wait_for_all_and_round_robin_when_both_have_demand()
+    {
+        var mat = Sys.Materializer();
+
+        var pub = this.CreateManualPublisherProbe<int>();
+        var leftSub = this.CreateManualSubscriberProbe<int>();
+        var rightSub = this.CreateManualSubscriberProbe<int>();
+
+        RunnableGraph.FromGraph(GraphDsl.Create(builder =>
+        {
+            var src = builder.Add(
+                Source.FromPublisher(pub)
+                      .WithAttributes(Attributes.CreateInputBuffer(1, 1))
+            );
+
+            // with waitForAllDownstreams = true is round robin
+            // with waitForAllDownstreams = false is faster, but first-come-first-serve
+            var balance = builder.Add(new Balance<int>(2, waitForAllDownstreams: true));
+
+            var leftSink = builder.Add(Sink.FromSubscriber(leftSub));
+            var rightSink = builder.Add(Sink.FromSubscriber(rightSub));
+
+            builder.From(src).To(balance);
+            builder.From(balance.Out(0)).To(leftSink);
+            builder.From(balance.Out(1)).To(rightSink);
+
+            return ClosedShape.Instance;
+        })).Run(mat);
+
+        var pubSub = pub.ExpectSubscription();
+        var left = leftSub.ExpectSubscription();
+        var right = rightSub.ExpectSubscription();
+
+        left.Request(1);
+        pub.ExpectNoMsg(TimeSpan.FromMilliseconds(50));
+
+        right.Request(1);
+        pub.ExpectRequest(pubSub, 1);
+
+        pubSub.SendNext(1);
+        leftSub.ExpectNext(1);
+
+        left.Request(1);
+        pub.ExpectRequest(pubSub, 1);
+
+        pubSub.SendNext(2);
+        rightSub.ExpectNext(2);
+
+        left.Cancel();
+        right.Cancel();
     }
 
     /// <summary>
