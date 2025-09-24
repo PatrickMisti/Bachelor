@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using Akka.Event;
 using Akka.Streams;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
@@ -141,9 +142,11 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
         downSub.Cancel();
     }
 
+    static int inFlowOne = 0;
     [Fact]
     public void Broadcast_two_slow_branches_should_limit_upstream_requests()
     {
+        var log = Sys.Log;
         var mat = Sys.Materializer();
 
         var pub = this.CreateManualPublisherProbe<int>();
@@ -154,26 +157,30 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
             var src = builder.Add(Source.FromPublisher(pub));
 
             var bcast = builder.Add(new Broadcast<int>(2));
-
+            
             // Beide Branches künstlich langsam, Parallelität = 1
             var slow1 = builder.Add(
                 Flow
                     .Create<int>()
-                    .SelectAsync(1, async x =>
+                    .SelectAsync(2, async x =>
                     {
-                        await Task.Delay(100); 
-                        return x;
+                        await Task.Delay(100);
+                        log.Info($"In slow flow 1 with element {x} is in flow one {++inFlowOne}");
+                        return x * 2;
                     })
-                    .WithAttributes(Attributes.CreateInputBuffer(1, 1)));
+                    //.WithAttributes(Attributes.CreateInputBuffer(1, 1))
+                );
             var slow2 = builder.Add(
                 Flow
                     .Create<int>()
-                    .SelectAsync(1, async x =>
+                    .SelectAsync(2, async x =>
                     {
-                        await Task.Delay(100); 
-                        return x;
+                        await Task.Delay(100);
+                        log.Info($"In slow flow 2 with element {x}");
+                        return x * 2;
                     })
-                    .WithAttributes(Attributes.CreateInputBuffer(1, 1)));
+                    //.WithAttributes(Attributes.CreateInputBuffer(1, 1))
+                );
 
             var merge = builder.Add(new Merge<int>(2));
 
@@ -190,26 +197,82 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
         var pubSub = pub.ExpectSubscription();
         var downstream = sub.ExpectSubscription();
 
-        // Downstream „öffnet den Hahn“ stark – aber Upstream darf nur so viel anfragen,
-        // wie durch Parallelität (1+1) möglich ist:
         downstream.Request(100);
 
-        // => Anfangs sollten genau 2 Requests am Publisher ankommen (ein Request je Branch)
-        //pub.ExpectRequest(2);
-
-        // Sende zwei Elemente; jedes landet auf je einem Branch und wird mit Delay verarbeitet
         pubSub.SendNext(1);
         pubSub.SendNext(2);
 
-        // Downstream bekommt beide, Reihenfolge kann je nach Timing variieren
-        // (hier einfach zwei ExpectNext ohne konkrete Reihenfolge)
-        sub.ExpectNext(); // 1 oder 2
-        sub.ExpectNext(); // 1 oder 2
+        sub.ExpectNext();
+        sub.ExpectNext();
 
-        // Nach Abschluss der Verarbeitung sollte erneut Request(2) eintreffen (eine pro Branch)
-        //pub.ExpectRequest(pubSub, 2);
-
-        // Aufräumen
         downstream.Cancel();
+    }
+
+    /// <summary>
+    /// Keep.Left take source
+    /// </summary>
+    [Fact]
+    public async Task KeepLeft_should_return_queue_and_stream_pushes_when_probe_demands()
+    {
+        var mat = Sys.Materializer();
+
+        var subProbe = this.CreateManualSubscriberProbe<int>();
+
+        // Left = ISourceQueueWithComplete<int>, Right = NotUsed (Sink.FromSubscriber)
+        var queue =
+            Source.Queue<int>(bufferSize: 8, OverflowStrategy.Backpressure)
+                  .ToMaterialized(Sink.FromSubscriber(subProbe), Keep.Left)
+                  .Run(mat);
+
+        var sub = await subProbe.ExpectSubscriptionAsync();
+        sub.Request(2);
+
+        var offered = await queue.OfferAsync(10);
+        Assert.True(offered is QueueOfferResult.Enqueued);
+
+        subProbe.ExpectNext(10);
+
+        queue.Complete();
+        sub.Cancel();
+    }
+
+    /// <summary>
+    /// Keep.Right take sink
+    /// </summary>
+    [Fact]
+    public async Task KeepRight_should_return_sink_task_of_first_element()
+    {
+        var mat = Sys.Materializer();
+
+        // Left = NotUsed (Source.From), Right = Task<int> (Sink.First<int>())
+        var firstTask =
+            Source.From(new[] { 7, 8, 9 })
+                  .ToMaterialized(Sink.First<int>(), Keep.Right)
+                  .Run(mat);
+
+        var first = await firstTask;
+        Assert.Equal(7, first);
+    }
+
+    /// <summary>
+    /// Keep.Both take source and sink
+    /// </summary>
+    [Fact]
+    public async Task KeepBoth_should_return_queue_and_task_together()
+    {
+        var mat = Sys.Materializer();
+
+        // Left = ISourceQueueWithComplete<int>, Right = Task<int>
+        var (queue, firstTask) =
+            Source.Queue<int>(16, OverflowStrategy.Backpressure)
+                  .ToMaterialized(Sink.First<int>(), Keep.Both)
+                  .Run(mat);
+
+        var res = await queue.OfferAsync(123);
+        Assert.True(res is QueueOfferResult.Enqueued);
+        
+        var first = await firstTask;
+        Assert.Equal(123, first);
+        queue.Complete();
     }
 }
