@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Ingress": {
+      "commandName": "Project",
+      "commandLineArgs": "ingress"
+    },
+    "Backend": {
+      "commandName": "Project",
+      "commandLineArgs": "backend"
+    },
+    "Controller": {
+      "commandName": "Project",
+      "commandLineArgs": "controller"
+    }
+  }
+}

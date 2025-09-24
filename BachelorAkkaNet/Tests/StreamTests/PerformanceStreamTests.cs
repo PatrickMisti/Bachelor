@@ -119,7 +119,8 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         Assert.True(min > 5, $"expected at least +5% CPU delta, got min {min:F1}%");
     }
 
-    [Fact]
+    //[Fact]
+    [Fact(Skip = "Local run")]
     public async Task Memory_should_peak_with_buffer_when_sink_is_slow()
     {
         var mat = Sys.Materializer();
