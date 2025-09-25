@@ -12,5 +12,5 @@ public class SimpleShardRegionTests(ITestOutputHelper helper) : TestKit(TestConf
                                                 akka.loglevel = Info
                                                 """;
 
-    private ILoggingAdapter _log => Sys.Log;
+    private ILoggingAdapter Logger => Sys.Log;
 }

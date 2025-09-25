@@ -28,7 +28,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
                                                 }
                                                 """;
 
-    private ILoggingAdapter _log => Sys.Log;
+    private ILoggingAdapter Logger => Sys.Log;
 
     [Fact]
     public async Task Throughput_should_be_higher_with_fast_sink_than_slow_sink()
@@ -99,7 +99,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
 
         // avg latency
         var avgLatency = latSumMs / Math.Max(1, count);
-        _log.Info($"Average latency is : {avgLatency}");
+        Logger.Info($"Average latency is : {avgLatency}");
 
         Assert.True(avgLatency is >= 40 and <= 150, $"avg latency expected ~50ms; got {avgLatency:F1}ms");
     }
@@ -123,7 +123,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         var max = results.Max();
 
         string result = string.Join(", ", results.Select(r => r.ToString("F1")));
-        _log.Info($"CPU delta results: [{result}], avg={avg:F1}, min={min:F1}, max={max:F1}");
+        Logger.Info($"CPU delta results: [{result}], avg={avg:F1}, min={min:F1}, max={max:F1}");
 
         Assert.True(min > 5, $"expected at least +5% CPU delta, got min {min:F1}%");
     }
@@ -179,13 +179,13 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         var g2 = GC.CollectionCount(2) - g2Start;
 
         // Log
-        _log.Info($"Peak WorkingSet: {peakWorkingSet / 1024d / 1024d:F1} MB, \n" +
+        Logger.Info($"Peak WorkingSet: {peakWorkingSet / 1024d / 1024d:F1} MB, \n" +
                   $"Peak Managed: {peakManaged / 1024d / 1024d:F1} MB, \n" +
                   $"WS After: {wsAfter / 1024d / 1024d:F1} MB, \n" +
                   $"Heap After (post-GC): {heapAfter / 1024d / 1024d:F1} MB, \n" +
                   $"GC Gen0/1/2: {g0}/{g1}/{g2}");
 
-        _log.Info($"PeakWorkingSet {peakWorkingSet} and WsAfter {wsAfter * 1024 * 1024}");
+        Logger.Info($"PeakWorkingSet {peakWorkingSet} and WsAfter {wsAfter * 1024 * 1024}");
         // Asserts: Peak muss deutlich > After sein; GC muss gearbeitet haben
         Assert.True(peakWorkingSet > wsAfter + 20 * 1024 * 1024, "erwarte >20 MB Working-Set-Peak");
         Assert.True(g0 > 0, "erwarte mindestens ein Gen0 GC");
@@ -217,13 +217,13 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         var mocksPerSec = processAggregate / sw.Elapsed.TotalSeconds;
         var itemsPerSec = processAggregate * res / sw.Elapsed.TotalSeconds;
 
-        _log.Info($"p={parallelism}: \n{processAggregate} mocks in {sw.Elapsed.TotalSeconds:F2}s --> {mocksPerSec:F0} mocks/s  (~{itemsPerSec:F0} items/s, {res} items/mock)");
+        Logger.Info($"p={parallelism}: \n{processAggregate} mocks in {sw.Elapsed.TotalSeconds:F2}s --> {mocksPerSec:F0} mocks/s  (~{itemsPerSec:F0} items/s, {res} items/mock)");
     }
 
     private string ParseToDto(string mock)
     {
         var res = JsonSerializer.Deserialize<IReadOnlyList<TelemetryDateDto>>(mock) ?? new List<TelemetryDateDto>();
-        //_log.Debug($"Deserialize mock data with {res.Count} elements");
+        //Logger.Debug($"Deserialize mock data with {res.Count} elements");
         return JsonSerializer.Serialize(res);
     }
 
@@ -231,7 +231,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
     {
         // measure baseline CPU
         var baseline = CpuMeasuring.MeasureCpuUsagePercent(TimeSpan.FromMilliseconds(300));
-        _log.Info($"Baseline Cpu measuring: {baseline}");
+        Logger.Info($"Baseline Cpu measuring: {baseline}");
 
         // CPU-intensive stage (intentionally synchronous and heavy)
         var done = Source.Repeat(1)
@@ -249,7 +249,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
 
         // calculate CPU while under load
         var underLoad = CpuMeasuring.MeasureCpuUsagePercent(TimeSpan.FromMilliseconds(500));
-        _log.Info($"Cpu measuring under load {underLoad}");
+        Logger.Info($"Cpu measuring under load {underLoad}");
 
         await done;
         return underLoad - baseline;
