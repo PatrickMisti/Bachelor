@@ -1,9 +1,13 @@
-﻿using Akka.Streams;
+﻿using Akka.Event;
+using Akka.Streams;
 using Akka.Streams.Dsl;
 using Akka.TestKit.Xunit2;
+using Infrastructure.Http;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Akka.Event;
+using System.Text.Json;
+using System.Threading;
+using Tests.StreamTests.Assets;
 using Tests.Utilities;
 using Xunit;
 using Xunit.Abstractions;
@@ -14,9 +18,14 @@ namespace Tests.StreamTests;
 public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConfig, helper)
 {
     private static readonly string TestConfig = """
-                                                akka.stdout-loglevel = Warning
-                                                akka.loggers = ["Akka.TestKit.TestEventListener, Akka.TestKit"]
-                                                akka.loglevel = Info
+                                                akka {
+                                                  loglevel = "INFO"                         # nur INFO+ überhaupt posten
+                                                  stdout-loglevel = "INFO"
+                                                  loggers = [
+                                                    "Akka.TestKit.TestEventListener, Akka.TestKit",   # -> xUnit-Output via helper
+                                                    "Akka.Event.StandardOutLogger, Akka"              # (optional) zusätzlich Konsole
+                                                  ]
+                                                }
                                                 """;
 
     private ILoggingAdapter _log => Sys.Log;
@@ -180,6 +189,42 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         // Asserts: Peak muss deutlich > After sein; GC muss gearbeitet haben
         Assert.True(peakWorkingSet > wsAfter + 20 * 1024 * 1024, "erwarte >20 MB Working-Set-Peak");
         Assert.True(g0 > 0, "erwarte mindestens ein Gen0 GC");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    public async Task Parallelism_on_json_workload(int parallelism)
+    {
+        var mat = Sys.Materializer();
+        var mock = MockSpeedTelemetry.GetMockData;
+
+        var res = (JsonSerializer.Deserialize<IReadOnlyList<TelemetryDateDto>>(mock) ?? []).Count();
+
+        const int nMocks = 5_000;
+        var sw = Stopwatch.StartNew();
+
+        var processAggregate = await Source
+            .Repeat(mock)
+            .Take(nMocks)
+            .SelectAsync(parallelism, x => Task.FromResult(ParseToDto(x)))
+            .Select(_ => 1)
+            .RunAggregate(0, (acc, one) => acc + one, mat);
+
+        sw.Stop();
+        var mocksPerSec = processAggregate / sw.Elapsed.TotalSeconds;
+        var itemsPerSec = processAggregate * res / sw.Elapsed.TotalSeconds;
+
+        _log.Info($"p={parallelism}: \n{processAggregate} mocks in {sw.Elapsed.TotalSeconds:F2}s --> {mocksPerSec:F0} mocks/s  (~{itemsPerSec:F0} items/s, {res} items/mock)");
+    }
+
+    private string ParseToDto(string mock)
+    {
+        var res = JsonSerializer.Deserialize<IReadOnlyList<TelemetryDateDto>>(mock) ?? new List<TelemetryDateDto>();
+        //_log.Debug($"Deserialize mock data with {res.Count} elements");
+        return JsonSerializer.Serialize(res);
     }
 
     private async Task<double> RunCpuTest(IMaterializer mat)
