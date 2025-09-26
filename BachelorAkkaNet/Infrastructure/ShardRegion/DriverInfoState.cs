@@ -2,7 +2,7 @@
 
 public class DriverInfoState
 {
-    public DriverKey Key { get; private set; }
+    public DriverKey? Key { get; private set; }
 
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
@@ -24,9 +24,11 @@ public class DriverInfoState
     public TimeSpan? Sector3Time { get; private set; }
 
     // ---- Historie ----
-    public List<LapRecord> Laps { get; } = new();
-    public List<PitStopRecord> PitStops { get; } = new();
-    public List<StintRecord> Stints { get; } = new();
+    public List<LapRecord> Laps { get; private set; } = new();
+    public List<PitStopRecord> PitStops { get; private set; } = new();
+    public List<StintRecord> Stints { get; private set; } = new();
+
+    public bool IsInitialized { get; private set; }
 
     public int PitStopCount => PitStops.Count;
 
@@ -46,7 +48,7 @@ public class DriverInfoState
         Key = null!;
     }
 
-    public DriverInfoState(DriverKey? key, string firstName, string lastName, string acronym, string countryCode, string teamName, DriverKey key1)
+    public DriverInfoState(DriverKey? key, string firstName, string lastName, string acronym, string countryCode, string teamName)
     {
         ArgumentNullException.ThrowIfNull(key);
         Key = key;
@@ -55,18 +57,56 @@ public class DriverInfoState
         Acronym = acronym;
         CountryCode = countryCode;
         TeamName = teamName;
+        IsInitialized = Key is not null;
     }
 
-    public DriverInfoState(int driverNumber, int sessionKey, string firstName, string lastName, string acronym, string countryCode, string teamName, DriverKey key)
-    : this(DriverKey.Create(sessionKey, driverNumber), firstName, lastName, acronym, countryCode, teamName, key)
+   /*public DriverInfoState(int driverNumber, int sessionKey, string firstName, string lastName, string acronym, string countryCode, string teamName, DriverKey key)
+    : this(DriverKey.Create(sessionKey, driverNumber), firstName, lastName, acronym, countryCode, teamName)
     {
 
     }
 
     public DriverInfoState(CreateModelDriverMessage message, DriverKey key)
-        : this(message.Key, message.FirstName, message.LastName, message.Acronym, message.CountryCode, message.TeamName, key)
+        : this(message.Key, message.FirstName, message.LastName, message.Acronym, message.CountryCode, message.TeamName)
     {
 
+    }*/
+
+    public DriverInfoState(
+        DriverKey key, 
+        string firstName, 
+        string lastName, 
+        string acronym, 
+        string countryCode, 
+        string teamName, 
+        int lapNumber,
+        int positionOnTrack,
+        double speed,
+        double deltaToLeader,
+        TyreCompound currentTyreCompound,
+        DateTime timestampUtc,
+        TimeSpan? lastLapTime,
+        TimeSpan? sector1Time,
+        TimeSpan? sector2Time,
+        TimeSpan? sector3Time,
+        List<LapRecord> laps,
+        List<PitStopRecord> pitStops,
+        List<StintRecord> stints)
+        : this(key, firstName, lastName, acronym, countryCode, teamName)
+    {
+        LapNumber = lapNumber;
+        PositionOnTrack = positionOnTrack;
+        Speed = speed;
+        DeltaToLeader = deltaToLeader;
+        CurrentTyreCompound = currentTyreCompound;
+        TimestampUtc = timestampUtc;
+        LastLapTime = lastLapTime;
+        Sector1Time = sector1Time;
+        Sector2Time = sector2Time;
+        Sector3Time = sector3Time;
+        Laps = laps;
+        PitStops = pitStops;
+        Stints = stints;
     }
 
     public void Apply(CreateModelDriverMessage m)
@@ -77,6 +117,7 @@ public class DriverInfoState
         Acronym = m.Acronym;
         CountryCode = m.CountryCode;
         TeamName = m.TeamName;
+        IsInitialized = Key is not null;
     }
 
     public void Apply(UpdateTelemetryMessage m)
@@ -147,6 +188,34 @@ public class DriverInfoState
         TimestampUtc = Max(TimestampUtc, m.TimestampUtc);
     }
 
+    public void Apply(IHasDriverId message)
+    {
+        switch (message)
+        {
+            case CreateModelDriverMessage create:
+                Apply(create);
+                break;
+            case UpdateIntervalMessage interval:
+                Apply(interval);
+                break;
+            case UpdateTelemetryMessage telemetry:
+                Apply(telemetry);
+                break;
+            case UpdatePositionMessage position:
+                Apply(position);
+                break;
+            case RecordLapMessage lap:
+                Apply(lap);
+                break;
+            case UpdateStintMessage stint:
+                Apply(stint);
+                break;
+            case RecordPitStopMessage pit:
+                Apply(pit);
+                break;
+        }
+    }
+
     // ---------- Helpers ----------
     private void EnsureKey(DriverKey? key)
     {
@@ -163,6 +232,30 @@ public class DriverInfoState
     {
         if (string.IsNullOrWhiteSpace(s)) return TyreCompound.Unknown;
         return Enum.TryParse<TyreCompound>(s.Trim(), true, out var c) ? c : TyreCompound.Unknown;
+    }
+
+    public void RestoreFromSnapshot(DriverInfoState snapshot)
+    {
+        Key = snapshot.Key;
+        FirstName = snapshot.FirstName;
+        LastName = snapshot.LastName;
+        Acronym = snapshot.Acronym;
+        CountryCode = snapshot.CountryCode;
+        TeamName = snapshot.TeamName;
+        LapNumber = snapshot.LapNumber;
+        PositionOnTrack = snapshot.PositionOnTrack;
+        Speed = snapshot.Speed;
+        DeltaToLeader = snapshot.DeltaToLeader;
+        CurrentTyreCompound = snapshot.CurrentTyreCompound;
+        TimestampUtc = snapshot.TimestampUtc;
+        LastLapTime = snapshot.LastLapTime;
+        Sector1Time = snapshot.Sector1Time;
+        Sector2Time = snapshot.Sector2Time;
+        Sector3Time = snapshot.Sector3Time;
+        Laps = [..snapshot.Laps];
+        PitStops = [..snapshot.PitStops];
+        Stints = [..snapshot.Stints];
+        IsInitialized = Key is not null;
     }
 
     public string ToDriverInfoString() =>

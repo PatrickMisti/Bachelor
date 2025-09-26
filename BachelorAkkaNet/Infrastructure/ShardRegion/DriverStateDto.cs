@@ -24,7 +24,7 @@ public sealed record DriverStateDto
 
     public static DriverStateDto Create(DriverInfoState info) => new()
     {
-        Key = info.Key,
+        Key = info.Key!,
         LapNumber = info.LapNumber,
         PositionOnTrack = info.PositionOnTrack,
         Speed = info.Speed,

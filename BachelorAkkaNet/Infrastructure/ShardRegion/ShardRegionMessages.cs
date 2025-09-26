@@ -133,3 +133,28 @@ public enum TyreCompound
     Intermediate,
     Unknown
 }
+
+public static class DriverMessageExtensions
+{
+    public static DriverInfoState CopyState(this DriverInfoState old) =>
+    new(
+        key:                 old.Key!,
+        firstName:           old.FirstName,
+        lastName:            old.LastName,
+        acronym:             old.Acronym,
+        countryCode:         old.CountryCode,
+        teamName:            old.TeamName,
+        lapNumber:           old.LapNumber,
+        positionOnTrack:     old.PositionOnTrack,
+        speed:               old.Speed,
+        deltaToLeader:       old.DeltaToLeader,
+        currentTyreCompound: old.CurrentTyreCompound,
+        timestampUtc:        old.TimestampUtc,
+        lastLapTime:         old.LastLapTime,
+        sector1Time:         old.Sector1Time,
+        sector2Time:         old.Sector2Time,
+        sector3Time:         old.Sector3Time,
+        laps:                [.. old.Laps],
+        pitStops:            [..old.PitStops],
+        stints:              [.. old.Stints]);
+}

@@ -136,11 +136,12 @@ public class DriverActor : ReceiveActor
     }
 
     private bool KeyEquals(DriverKey other) =>
+        _state.Key is not null &&
         _state.Key.SessionId == other.SessionId &&
         _state.Key.DriverNumber == other.DriverNumber;
 
     private void SendToHandler()
     {
-        _handler.Tell(new UpdatedDriverMessage(_state.Key, DriverStateDto.Create(_state)));
+        _handler.Tell(new UpdatedDriverMessage(_state.Key!, DriverStateDto.Create(_state)));
     }
 }
