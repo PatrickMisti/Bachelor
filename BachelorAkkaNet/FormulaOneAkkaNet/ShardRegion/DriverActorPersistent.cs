@@ -21,7 +21,8 @@ public class DriverActorPersistent : ReceivePersistentActor
     {
         _handler = handler.ActorRef;
         _logger.Info($"DriverActorPersistent constructor: {Self.Path.Name}");
-        
+        RecoverState();
+
         Become(Uninitialized);
     }
     protected override void PreStart() => _logger.Debug("DriverActor({EntityId}) started", Self.Path.Name);
@@ -38,7 +39,7 @@ public class DriverActorPersistent : ReceivePersistentActor
                 {
                     _state.Apply(evt);
                     _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
-                    Sender.Tell(new CreatedDriverMessage(_state.Key!));
+                    Sender.Tell(CreatedDriverMessage.Success(_state.Key));
                     // Optional: Idle-Passivation
                     //Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
                     // Become delete before receives
@@ -64,13 +65,14 @@ public class DriverActorPersistent : ReceivePersistentActor
             Context.Parent.Tell(new Passivate(new StopEntity()));
         });
 
-        RecoverState();
+        
     }
 
     private void RecoverState()
     {
         Recover<SnapshotOffer>(offer =>
         {
+            _logger.Info($"SnapshotOffer for {offer.Snapshot}");
             if (offer.Snapshot is DriverInfoState state)
             {
                 _state.RestoreFromSnapshot(state);
@@ -78,7 +80,11 @@ public class DriverActorPersistent : ReceivePersistentActor
             }
         });
 
-        Recover<IHasDriverId>(_state.Apply);
+        Recover<IHasDriverId>(evt =>
+        {
+            _state.Apply(evt);
+            _logger.Info("Replayed {Event} for {Pid}", evt.GetType().Name, PersistenceId);
+        });
 
         Recover<RecoveryCompleted>(_ =>
         {
@@ -171,14 +177,17 @@ public class DriverActorPersistent : ReceivePersistentActor
     }
 
     private bool KeyEquals(DriverKey other) =>
-        _state.Key is not null &&
         _state.Key.SessionId == other.SessionId &&
         _state.Key.DriverNumber == other.DriverNumber;
 
     private void CreateSnapshot()
     {
-        if (LastSequenceNr % 10 == 0)
+        if (LastSequenceNr % 1 == 0)
+        {
+            _logger.Info("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
             SaveSnapshot(_state.CopyState());
+        }
+            
     }
 
     private void SendToHandler() => 

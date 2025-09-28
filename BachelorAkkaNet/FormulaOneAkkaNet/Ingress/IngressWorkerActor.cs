@@ -40,7 +40,7 @@ public class IngressWorkerActor : ReceiveActor
                         break;
                 }
 
-                _log.Info($"Forwarding message {msg.GetType()} to proxy");
+                _log.Debug($"Forwarding message {msg.GetType()} to proxy");
                 // an ShardRegion (Proxy) forwarden
                 ;
 

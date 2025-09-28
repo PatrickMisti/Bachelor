@@ -27,11 +27,11 @@ public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> sh
 
     private async Task DriverStateHandler(GetDriverStateRequest msg)
     {
-        if (msg.Key is null)
+        /*if (msg.Key is null)
         {
             Sender.Tell(new GetDriverStateResponse(msg.Key, $"{typeof(GetDriverStateRequest)} id was empty"));
             return;
-        }
+        }*/
 
         try
         {
@@ -61,7 +61,7 @@ public sealed class TelemetryRegionHandler(IRequiredActor<DriverRegionMarker> sh
 
     private void NotifyUpdatedDriver(UpdatedDriverMessage msg)
     {
-        _logger.Info($"Send updated state to api {msg.Key.DriverNumber}");
+        _logger.Debug($"Send updated state to api {msg.Key.DriverNumber}");
         Context.PubSub().Api.Publish(new NotifyDriverStateMessage(msg.Key, msg.State));
     }
 

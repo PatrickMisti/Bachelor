@@ -1,12 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
 	<ItemGroup>
+	  <Content Remove="appsettings.Development.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="appsettings.Development.json" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Akka" />
 		<PackageReference Include="Akka.Hosting" />
 		<PackageReference Include="Akka.Persistence" />
 		<PackageReference Include="Akka.Persistence.Hosting" />
 		<PackageReference Include="Akka.Persistence.Sql" />
 		<PackageReference Include="Akka.Persistence.Sql.Hosting" />
+		<PackageReference Include="Akka.Serialization.Hyperion" />
 		<PackageReference Include="Akka.Streams" />
 		<PackageReference Include="Akka.Logger.Serilog" />
 		<PackageReference Include="Akka.Cluster" />

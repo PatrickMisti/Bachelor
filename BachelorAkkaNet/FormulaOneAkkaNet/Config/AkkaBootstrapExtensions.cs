@@ -1,7 +1,9 @@
 ﻿using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
+using Akka.Event;
 using Akka.Hosting;
 using Akka.Persistence.Hosting;
+using Akka.Persistence.Sql.Hosting;
 using FormulaOneAkkaNet.Coordinator;
 using FormulaOneAkkaNet.Coordinator.Listeners;
 using FormulaOneAkkaNet.Ingress;
@@ -9,6 +11,9 @@ using FormulaOneAkkaNet.ShardRegion;
 using FormulaOneAkkaNet.ShardRegion.Utilities;
 using Infrastructure;
 using Infrastructure.General;
+using LinqToDB;
+using LinqToDB.Data;
+using Npgsql;
 
 namespace FormulaOneAkkaNet.Config;
 
@@ -16,18 +21,24 @@ internal static class AkkaBootstrapExtensions
 {
     public static IServiceCollection UseAkka(this IServiceCollection sp, AkkaConfig akkaHc, ConfigurationManager manager)
     {
-        string connectionString = manager.GetConnectionString("PostgreSql") ?? string.Empty;
-        sp.AddAkka(akkaHc.ClusterName, (akka, sp) =>
+        string connectionString = manager.GetConnectionString("PostgreSql")!;
+
+        sp.AddAkka(akkaHc.ClusterName, akka =>
         {
             
             akka.UseAkkaLogger();
             akka.UseRemoteCluster(akkaHc);
+            akka.UseHyperion();
 
             if (akkaHc.Roles.Contains(ClusterMemberRoles.Controller.ToStr()))
                 akka.RegisterCoordinator(akkaHc);
 
             if (akkaHc.Roles.Contains(ClusterMemberRoles.Backend.ToStr()))
+            {
                 akka.RegisterShardRegion(akkaHc);
+                akka.RegisterBackendJournal(connectionString);
+            }
+                
 
             if (akkaHc.Roles.Contains(ClusterMemberRoles.Ingress.ToStr()))
                 akka.RegisterIngress(akkaHc);
@@ -98,7 +109,7 @@ internal static class AkkaBootstrapExtensions
             })
             .WithShardRegion<DriverRegionMarker>(
                 typeName: akkaHc.ShardName,
-                entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActor>(),
+                entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActorPersistent>(),
                 messageExtractor: extractor,
                 shardOptions: new ShardOptions
                 {
@@ -122,22 +133,36 @@ internal static class AkkaBootstrapExtensions
     private static void RegisterBackendJournal(this AkkaConfigurationBuilder config, string connectionString)
     {
         string dbName = "driverRegion";
-#if DEBUG
-        config.WithInMemoryJournal(journalId: dbName, journalBuilder: _ => {});
-        config.WithInMemorySnapshotStore(dbName);
-#else
+
+        if (connectionString is "")
+        {
+            config.WithInMemoryJournal(journalId: dbName, journalBuilder: _ => { });
+            config.WithInMemorySnapshotStore(dbName);
+            return;
+        }
+        
         var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
 
         var dataOptions = new DataOptions()
             .UseDataProvider(
                 DataConnection.GetDataProvider(
-                    ProviderName.PostgreSQL, 
+                    ProviderName.PostgreSQL,
                     dataSource.ConnectionString) ?? throw new Exception("Could not get data provider"))
             .UseProvider(ProviderName.PostgreSQL)
-            .UseConnectionFactory((opt) => dataSource.CreateConnection());
-        
+            .UseConnectionFactory(_ => dataSource.CreateConnection());
+
         config.WithSqlPersistence(dataOptions, autoInitialize: true, schemaName: "public");
-#endif
+
+        config.AddStartup((sys, ct) =>
+        {
+            var c = sys.Settings.Config;
+            sys.Log.Info("Journal={0}, Snapshot={1}",
+                c.GetString("akka.persistence.journal.plugin"),
+                c.GetString("akka.persistence.snapshot-store.plugin"));
+
+            sys.RegisterOnTermination(() => dataSource.Dispose());
+            return Task.CompletedTask;
+        });
     }
 
     private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
@@ -162,6 +187,10 @@ internal static class AkkaBootstrapExtensions
     {
         config.WithSingletonProxy<ClusterCoordinatorMarker>(
             singletonName: ClusterMemberRoles.Controller.ToStr(),
-            singletonManagerName: ClusterMemberRoles.Controller.ToStr());
+            singletonManagerName: ClusterMemberRoles.Controller.ToStr(),
+            options: new ClusterSingletonOptions
+            {
+                Role = ClusterMemberRoles.Controller.ToStr()
+            });
     }
 }

@@ -36,7 +36,7 @@ public class DriverActor : ReceiveActor
             _state.Apply(m);
             _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
 
-            Sender.Tell(new CreatedDriverMessage(_state.Key));
+            Sender.Tell(CreatedDriverMessage.Success(_state.Key));
 
             // Optional: Idle-Passivation
             //Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
@@ -136,7 +136,6 @@ public class DriverActor : ReceiveActor
     }
 
     private bool KeyEquals(DriverKey other) =>
-        _state.Key is not null &&
         _state.Key.SessionId == other.SessionId &&
         _state.Key.DriverNumber == other.DriverNumber;
 

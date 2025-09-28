@@ -2,6 +2,7 @@
 using Akka.Event;
 using Akka.Hosting;
 using Akka.Streams;
+using FormulaOneAkkaNet.Coordinator.Broadcasts;
 using FormulaOneAkkaNet.Ingress.Messages;
 using Infrastructure;
 using Infrastructure.Http;
@@ -44,11 +45,11 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         ReceiveAsync<ShardConnectionAvailableRequest>(async _ =>
         {
-            var res = await _controller.Ask<IngressConnectivityResponse>(IngressConnectivityRequest.Instance);
-            _log.Info($"Got response from controller with shard is online: {res.ShardAvailable}");
-            Sender.Tell(new ShardConnectionAvailableResponse(res.ShardAvailable));
+            var res = await _controller.Ask<IngressActivateResponse>(IngressActivateRequest.Instance);
+            _log.Info($"Got response from controller with shard is online: {res.CanBeActivated}");
+            Sender.Tell(new ShardConnectionAvailableResponse(res.CanBeActivated));
 
-            if (res.ShardAvailable && !_pipeline.IsRunning)
+            if (res.CanBeActivated && !_pipeline.IsRunning)
                 _pipeline.StartPush(workerCount: 4);
         });
 
@@ -63,6 +64,10 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             await StartPushStreamClient(msg.SessionKey));
 
         HandleIngressPipeline();
+
+        // only for testing
+        // _log.Info("Send shard connection available request!");
+        // Self.Tell(ShardConnectionAvailableRequest.Instance);
     }
 
     private void HandleIngressPipeline()

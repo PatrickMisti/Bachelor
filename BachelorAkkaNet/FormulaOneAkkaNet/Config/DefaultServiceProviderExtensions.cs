@@ -4,6 +4,7 @@ using Infrastructure.Http;
 using Serilog;
 using Akka.Logger.Serilog;
 using Akka.Remote.Hosting;
+using Akka.Serialization;
 
 namespace FormulaOneAkkaNet.Config;
 
@@ -44,7 +45,7 @@ public static class DefaultServiceProviderExtensions
             .WithClustering(
                 new ClusterOptions
                 {
-                    SeedNodes = config.Roles.Count > 1 ? config.SeedNodes : [config.SeedNodes.First()],
+                    SeedNodes = config.Roles.Count == 1 ? config.SeedNodes : [config.SeedNodes.First()],
                     Roles = config.Roles.ToArray()
                 })
             .WithDistributedPubSub(role: null!);
@@ -63,6 +64,21 @@ public static class DefaultServiceProviderExtensions
             // to use the logger in the actor echo is actor
             logger.AddLogger<SerilogLogger>();
         });
+
+        return builder;
+    }
+
+    public static AkkaConfigurationBuilder UseHyperion(this AkkaConfigurationBuilder builder)
+    {
+        builder
+            .WithCustomSerializer(
+                serializerIdentifier: "hyperion",
+                // fallback
+                boundTypes: [typeof(object)],
+                serializerFactory: system => new HyperionSerializer(system))
+            .AddHocon(
+                HyperionSerializer.DefaultConfiguration(),
+                HoconAddMode.Prepend);
 
         return builder;
     }

@@ -1,16 +1,28 @@
 {
-  "profiles": {
-    "Ingress": {
-      "commandName": "Project",
-      "commandLineArgs": "ingress"
-    },
-    "Backend": {
-      "commandName": "Project",
-      "commandLineArgs": "backend"
-    },
-    "Controller": {
-      "commandName": "Project",
-      "commandLineArgs": "controller"
+    "profiles": {
+        "All": {
+            "commandName": "Project"
+        },
+        "Ingress": {
+            "commandName": "Project",
+            "commandLineArgs": "ingress",
+            "environmentVariables": {
+                "DOTNET_ENVIRONMENT": "Development"
+            }
+        },
+        "Backend": {
+            "commandName": "Project",
+            "commandLineArgs": "backend",
+            "environmentVariables": {
+                "DOTNET_ENVIRONMENT": "Development"
+            }
+        },
+        "Controller": {
+            "commandName": "Project",
+            "commandLineArgs": "controller",
+            "environmentVariables": {
+                "DOTNET_ENVIRONMENT": "Development"
+            }
+        }
     }
-  }
 }

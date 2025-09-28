@@ -22,6 +22,7 @@ public class IngressListener(IActorRef controller) : BaseDebounceListener(contro
     {
         // External request from ingress to check if shard is available
         // Request from ingress if shard is available
+        // [Obsolete] directly ask controller
         ReceiveAsync<IngressConnectivityRequest>(async _ =>
         {
             var res = await Controller.Ask<IngressActivateResponse>(IngressActivateRequest.Instance);
