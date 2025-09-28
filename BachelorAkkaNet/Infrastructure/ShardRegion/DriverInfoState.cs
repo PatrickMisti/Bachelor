@@ -2,7 +2,7 @@
 
 public class DriverInfoState
 {
-    public DriverKey? Key { get; private set; }
+    public DriverKey Key { get; private set; }
 
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
@@ -43,12 +43,9 @@ public class DriverInfoState
         }
     }
 
-    public DriverInfoState()
-    {
-        Key = null!;
-    }
+    public DriverInfoState() { }
 
-    public DriverInfoState(DriverKey? key, string firstName, string lastName, string acronym, string countryCode, string teamName)
+    public DriverInfoState(DriverKey key, string firstName, string lastName, string acronym, string countryCode, string teamName)
     {
         ArgumentNullException.ThrowIfNull(key);
         Key = key;
@@ -57,7 +54,7 @@ public class DriverInfoState
         Acronym = acronym;
         CountryCode = countryCode;
         TeamName = teamName;
-        IsInitialized = Key is not null;
+        IsInitialized = true;
     }
 
    /*public DriverInfoState(int driverNumber, int sessionKey, string firstName, string lastName, string acronym, string countryCode, string teamName, DriverKey key)
@@ -117,7 +114,7 @@ public class DriverInfoState
         Acronym = m.Acronym;
         CountryCode = m.CountryCode;
         TeamName = m.TeamName;
-        IsInitialized = Key is not null;
+        IsInitialized = true;
     }
 
     public void Apply(UpdateTelemetryMessage m)
@@ -217,9 +214,9 @@ public class DriverInfoState
     }
 
     // ---------- Helpers ----------
-    private void EnsureKey(DriverKey? key)
+    private void EnsureKey(DriverKey key)
     {
-        if (Key is null)
+        if (!Key.Equals(key))
             throw new ArgumentNullException();
     }
 
@@ -255,7 +252,7 @@ public class DriverInfoState
         Laps = [..snapshot.Laps];
         PitStops = [..snapshot.PitStops];
         Stints = [..snapshot.Stints];
-        IsInitialized = Key is not null;
+        IsInitialized = true;
     }
 
     public string ToDriverInfoString() =>

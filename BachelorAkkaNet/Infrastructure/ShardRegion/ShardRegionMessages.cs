@@ -7,61 +7,28 @@ public interface IHasDriverId
     DriverKey Key { get; }
 }
 
-public class DriverKey
+public readonly record struct DriverKey(int SessionId, int DriverNumber)
 {
-    [Range(1, 999)]
-    public int DriverNumber { get; init; }
-
-    [Range(1, int.MaxValue)]
-    public int SessionId { get; init; }
-
-    public override string? ToString() => $"S{SessionId}-D{DriverNumber:D2}";
-
+    public override string ToString() => $"S{SessionId}-D{DriverNumber:D2}";
     public string UnderscoreKey() => $"{DriverNumber}_{SessionId}";
 
     public static DriverKey Create(int sessionId, int driverNumber)
     {
-        var k = new DriverKey { SessionId = sessionId, DriverNumber = driverNumber };
-        try
-        {
-            Validator.ValidateObject(k, new ValidationContext(k), validateAllProperties: true);
-            return k;
-        }
-        catch (Exception)
-        {
-            throw new ArgumentException("Wrong sessionId or driverNumber");
-        }
+        // gleiche Regeln wie deine DataAnnotations
+        if (sessionId < 1) throw new ArgumentOutOfRangeException(nameof(sessionId));
+        if (driverNumber is < 1 or > 999) throw new ArgumentOutOfRangeException(nameof(driverNumber));
+        return new DriverKey(sessionId, driverNumber);
     }
 }
 
-public sealed record CreateModelDriverMessage : IHasDriverId
-{
-    public DriverKey Key { get; set; }
-    public string FirstName { get; init; }
-    public string LastName { get; init; }
-    public string Acronym { get; init; } // z.B. VER, HAM
-    public string CountryCode { get; init; } // ISO-3166 (z.B. NL, GB)
-    public string TeamName { get; init; }
-
-    public CreateModelDriverMessage() { }
-
-    public CreateModelDriverMessage(DriverKey key)
-    {
-        Key = key;
-    }
-
-    public CreateModelDriverMessage(DriverKey key, string firstName, string lastName, string acronym,
-        string countryCode, string teamName)
-        : this(key)
-    {
-        Key = key;
-        FirstName = firstName;
-        LastName = lastName;
-        Acronym = acronym;
-        CountryCode = countryCode;
-        TeamName = teamName;
-    }
-}
+public sealed record CreateModelDriverMessage(
+    DriverKey Key,
+    string FirstName,
+    string LastName,
+    string Acronym,     // z.B. VER, HAM
+    string CountryCode, // ISO-3166: NL, GB, …
+    string TeamName
+) : IHasDriverId;
 
 // LIVE-Updates (small & often)
 public sealed record UpdateTelemetryMessage(DriverKey Key, double Speed, DateTime TimestampUtc) : IHasDriverId;
@@ -101,27 +68,10 @@ public sealed record StopEntity;
 
 public sealed record NotInitializedMessage(string EntityId);
 
-public sealed record CreatedDriverMessage : IHasDriverId
+public sealed record CreatedDriverMessage(DriverKey Key, bool IsSuccess, string? ErrorMsg) : IHasDriverId
 {
-    public DriverKey Key { get; set; }
-    public bool IsSuccess { get; private set; }
-    public string ErrorMsg { get; private set; } = string.Empty;
-
-    public CreatedDriverMessage()
-    { }
-
-    public CreatedDriverMessage(DriverKey key)
-    {
-        Key = key;
-        IsSuccess = true;
-    }
-
-    public CreatedDriverMessage(string errorMsg)
-    {
-        Key = null!;
-        IsSuccess = false;
-        ErrorMsg = errorMsg;
-    }
+    public static CreatedDriverMessage Success(DriverKey key) => new(key, true, null);
+    public static CreatedDriverMessage Failure(string error) => new(default, false, error);
 }
 
 public enum TyreCompound
@@ -138,7 +88,7 @@ public static class DriverMessageExtensions
 {
     public static DriverInfoState CopyState(this DriverInfoState old) =>
     new(
-        key:                 old.Key!,
+        key:                 old.Key,
         firstName:           old.FirstName,
         lastName:            old.LastName,
         acronym:             old.Acronym,
