@@ -12,6 +12,7 @@
     <PackageVersion Include="Akka.Persistence.Hosting" Version="1.5.49" />
     <PackageVersion Include="Akka.Persistence.Sql" Version="1.5.44" />
     <PackageVersion Include="Akka.Persistence.Sql.Hosting" Version="1.5.44" />
+    <PackageVersion Include="Akka.Serialization.Hyperion" Version="1.5.49" />
     <PackageVersion Include="Akka.Streams" Version="1.5.49" />
     <PackageVersion Include="Akka.Logger.Serilog" Version="1.5.25" />
     <PackageVersion Include="Akka.Streams.TestKit" Version="1.5.49" />
