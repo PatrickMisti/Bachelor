@@ -3,6 +3,10 @@
 	<ItemGroup>
 		<PackageReference Include="Akka" />
 		<PackageReference Include="Akka.Hosting" />
+		<PackageReference Include="Akka.Persistence" />
+		<PackageReference Include="Akka.Persistence.Hosting" />
+		<PackageReference Include="Akka.Persistence.Sql" />
+		<PackageReference Include="Akka.Persistence.Sql.Hosting" />
 		<PackageReference Include="Akka.Streams" />
 		<PackageReference Include="Akka.Logger.Serilog" />
 		<PackageReference Include="Akka.Cluster" />
@@ -10,6 +14,7 @@
 
 		<PackageReference Include="Microsoft.Extensions.Hosting" />
 		<PackageReference Include="Microsoft.Extensions.Http" />
+		<PackageReference Include="Npgsql" />
 
 		<PackageReference Include="Serilog" />
 		<PackageReference Include="Serilog.Settings.Configuration" />

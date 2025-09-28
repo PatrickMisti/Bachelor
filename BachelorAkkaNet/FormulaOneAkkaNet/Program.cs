@@ -27,18 +27,18 @@ else if (roles.Contains(ClusterMemberRoles.Backend.ToStr()) && roles.Count == 1)
 else if (roles.Count > 1)
     defaultPort = 5000;
 
-    var akkaHc = new AkkaConfig
-    {
-        Port = PortChecker.CheckPort(defaultPort),
-        Role = roles.Count == 1 ? roles.First() : defaultNodeName,
-        Roles = roles
-    };
+var akkaHc = new AkkaConfig
+{
+    Port = PortChecker.CheckPort(defaultPort),
+    Role = roles.Count == 1 ? roles.First() : defaultNodeName,
+    Roles = roles
+};
 
 builder.CreateLoggingAdapter();
 
 builder.Services
     .AddHttpService(defaultUrl)
-    .UseAkka(akkaHc);
+    .UseAkka(akkaHc, builder.Configuration);
 
 var app = builder.Build();
 app.Run();

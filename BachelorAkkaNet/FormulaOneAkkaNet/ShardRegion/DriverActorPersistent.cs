@@ -11,7 +11,7 @@ namespace FormulaOneAkkaNet.ShardRegion;
 
 public class DriverActorPersistent : ReceivePersistentActor
 {
-    public override string PersistenceId => Self.Path.Name;
+    public override string PersistenceId => $"driver-{Self.Path.Name}";
 
     private readonly ILoggingAdapter _logger = Context.GetLogger();
     private readonly DriverInfoState _state = new();
@@ -135,6 +135,9 @@ public class DriverActorPersistent : ReceivePersistentActor
             _logger.Info("Idle timeout for {Id}. Passivating.", _state.Key);
             Context.Parent.Tell(new Passivate(new StopEntity()));
         });*/
+
+        Command<SaveSnapshotSuccess>(_ => _logger.Debug("Snapshot saved at seqNr {0}", _.Metadata.SequenceNr));
+        Command<SaveSnapshotFailure>(_ => _logger.Warning("Snapshot failed at seqNr {0}", _.Metadata.SequenceNr));
 
         Command<StopEntity>(_ => Context.Stop(Self));
     }

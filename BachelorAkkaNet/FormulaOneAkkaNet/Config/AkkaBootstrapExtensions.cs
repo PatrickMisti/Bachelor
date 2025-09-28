@@ -1,22 +1,25 @@
 ﻿using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
 using Akka.Hosting;
+using Akka.Persistence.Hosting;
 using FormulaOneAkkaNet.Coordinator;
 using FormulaOneAkkaNet.Coordinator.Listeners;
 using FormulaOneAkkaNet.Ingress;
-using Infrastructure;
 using FormulaOneAkkaNet.ShardRegion;
 using FormulaOneAkkaNet.ShardRegion.Utilities;
+using Infrastructure;
 using Infrastructure.General;
 
 namespace FormulaOneAkkaNet.Config;
 
 internal static class AkkaBootstrapExtensions
 {
-    public static IServiceCollection UseAkka(this IServiceCollection sp, AkkaConfig akkaHc)
+    public static IServiceCollection UseAkka(this IServiceCollection sp, AkkaConfig akkaHc, ConfigurationManager manager)
     {
-        sp.AddAkka(akkaHc.ClusterName, akka =>
+        string connectionString = manager.GetConnectionString("PostgreSql") ?? string.Empty;
+        sp.AddAkka(akkaHc.ClusterName, (akka, sp) =>
         {
+            
             akka.UseAkkaLogger();
             akka.UseRemoteCluster(akkaHc);
 
@@ -114,6 +117,27 @@ internal static class AkkaBootstrapExtensions
                 registry.Register<TelemetryRegionHandler>(
                     system.ActorOf(resolver.Props<TelemetryRegionHandler>(),
                         "telemetry-region-handler")));
+    }
+
+    private static void RegisterBackendJournal(this AkkaConfigurationBuilder config, string connectionString)
+    {
+        string dbName = "driverRegion";
+#if DEBUG
+        config.WithInMemoryJournal(journalId: dbName, journalBuilder: _ => {});
+        config.WithInMemorySnapshotStore(dbName);
+#else
+        var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
+
+        var dataOptions = new DataOptions()
+            .UseDataProvider(
+                DataConnection.GetDataProvider(
+                    ProviderName.PostgreSQL, 
+                    dataSource.ConnectionString) ?? throw new Exception("Could not get data provider"))
+            .UseProvider(ProviderName.PostgreSQL)
+            .UseConnectionFactory((opt) => dataSource.CreateConnection());
+        
+        config.WithSqlPersistence(dataOptions, autoInitialize: true, schemaName: "public");
+#endif
     }
 
     private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
