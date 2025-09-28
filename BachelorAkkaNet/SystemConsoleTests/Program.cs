@@ -2,6 +2,7 @@
 using Akka.Cluster;
 using Akka.Cluster.Tools.PublishSubscribe;
 using Akka.Configuration;
+using Akka.Serialization;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
 using SystemConsoleTests;
@@ -13,7 +14,8 @@ var port = 0;
 var config = ConfigurationFactory
     .ParseString(HoconGen.Build(host, port))
     .WithFallback(DistributedPubSub.DefaultConfig())
-    .WithFallback(ConfigurationFactory.Default());
+    .WithFallback(ConfigurationFactory.Default())
+    .WithFallback(HyperionSerializer.DefaultConfiguration());
 
 using var system = ActorSystem.Create("cluster-system", config);
 

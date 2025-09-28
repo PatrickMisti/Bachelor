@@ -7,10 +7,16 @@ namespace Tests.ShardRegion;
 public class SimpleShardRegionTests(ITestOutputHelper helper) : TestKit(TestConfig,helper)
 {
     private static readonly string TestConfig = """
-                                                akka.stdout-loglevel = Warning
-                                                akka.loggers = ["Akka.TestKit.TestEventListener, Akka.TestKit"]
-                                                akka.loglevel = Info
+                                                akka {
+                                                  loglevel = "INFO"                         # nur INFO+ überhaupt posten
+                                                  stdout-loglevel = "INFO"
+                                                  loggers = [
+                                                    "Akka.TestKit.TestEventListener, Akka.TestKit",   # -> xUnit-Output via helper
+                                                    "Akka.Event.StandardOutLogger, Akka"              # (optional) zusätzlich Konsole
+                                                  ]
+                                                }
                                                 """;
 
     private ILoggingAdapter Logger => Sys.Log;
+
 }

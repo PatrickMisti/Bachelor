@@ -10,6 +10,7 @@
 	<ItemGroup>
 		<PackageReference Include="Akka" />
 		<PackageReference Include="Akka.Cluster" />
+		<PackageReference Include="Akka.Serialization.Hyperion" />
 	</ItemGroup>
 
 	<ItemGroup>

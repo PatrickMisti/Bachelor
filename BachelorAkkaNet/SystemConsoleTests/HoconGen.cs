@@ -13,6 +13,12 @@ akka {{
   loglevel = DEBUG
   stdout-loglevel = DEBUG
   actor.provider = ""cluster""
+    serializers {{
+      hyperion = ""Akka.Serialization.HyperionSerializer, Akka.Serialization.Hyperion""
+    }}
+    serialization-bindings {{
+      ""System.Object"" = hyperion
+    }}
 
   coordinated-shutdown {{
     run-by-actor-system-terminate = off

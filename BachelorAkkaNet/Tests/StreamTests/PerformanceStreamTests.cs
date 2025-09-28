@@ -6,7 +6,6 @@ using Infrastructure.Http;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading;
 using Tests.StreamTests.Assets;
 using Tests.Utilities;
 using Xunit;
