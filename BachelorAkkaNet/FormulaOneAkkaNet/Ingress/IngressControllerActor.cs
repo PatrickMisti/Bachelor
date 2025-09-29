@@ -117,9 +117,9 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         _log.Info("Sent {0} drivers to pipeline for session {1}", driver.Count, sessionKey);
 
-        await _pipeline.OfferAsync(list.ToList());
+        await _pipeline.OfferAsync(list!.ToList());
 
-        _log.Info("Sent {0} data points to pipeline for session {1}", list.Count, sessionKey);
+        _log.Info("Sent {0} data points to pipeline for session {1}", list!.Count, sessionKey);
     }
 
     protected override void PostStop()

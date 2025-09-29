@@ -11,7 +11,7 @@ public record NotifyDriverStateMessage : IPubMessage
     public NotifyDriverStateMessage(DriverKey key, DriverStateDto? state)
     {
         Key = key;
-        State = state;
+        State = state ?? null!;
     }
 
 

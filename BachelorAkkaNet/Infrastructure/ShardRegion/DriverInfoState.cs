@@ -47,7 +47,6 @@ public class DriverInfoState
 
     public DriverInfoState(DriverKey key, string firstName, string lastName, string acronym, string countryCode, string teamName)
     {
-        ArgumentNullException.ThrowIfNull(key);
         Key = key;
         FirstName = firstName;
         LastName = lastName;
