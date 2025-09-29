@@ -103,8 +103,8 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
         Assert.True(avgLatency is >= 40 and <= 150, $"avg latency expected ~50ms; got {avgLatency:F1}ms");
     }
 
-    //[Fact(Skip = "Local run only - CI may cause troubles")]
-    [Fact]
+    [Fact(Skip = "Local run only - CI may cause troubles")]
+    //[Fact]
     public async Task Cpu_usage_should_rise_under_cpu_bound_stage()
     {
         var mat = Sys.Materializer();
@@ -142,7 +142,7 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
 
         using var cts = new CancellationTokenSource();
 
-        // Sampler: alle 100 ms messen
+        // calc all 100ms peak memory usage while running
         var sampler = Task.Run(async () =>
         {
             while (!cts.IsCancellationRequested)
@@ -154,14 +154,14 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
             }
         }, cts.Token);
 
-        // Stream: viel Allocation + langsamer Sink -> Buffer füllt sich
+        
         var done =
-            Source.Repeat(100_000)                 // viele Elemente
+            Source.Repeat(100_000)
                   .Take(50_000)
-                  .Select(sz => new byte[sz])      // allokiere 100 KB je Element
-                  .Buffer(5000, OverflowStrategy.Backpressure) // ~500 MB max, je nach GC
-                  .Select(b => b.Length)           // benutze die Daten
-                  .ToMaterialized(Sink.ForEach<int>(async _ => await Task.Delay(1)), Keep.Right) // langsamer Sink
+                  .Select(sz => new byte[sz])// alloc ~100 KB
+                  .Buffer(5000, OverflowStrategy.Backpressure)
+                  .Select(b => b.Length)
+                  .ToMaterialized(Sink.ForEach<int>(async _ => await Task.Delay(1)), Keep.Right)
                   .Run(mat);
 
         await done;
