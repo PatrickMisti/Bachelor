@@ -60,10 +60,10 @@ public class ClusterCoordinator : ReceiveActor
         {
             var shardCount = await _shardListener.Ask<ShardCountResponse>(ShardCountRequest.Instance);
             var ingressCount = await _ingressListener.Ask<IngressCountResponse>(IngressCountRequest.Instance);
-            _logger.Info($"Status: Shard count: {shardCount.ActiveShards}, Ingress count: {ingressCount.ActiveIngress}");
+            _logger.Info($"Status: Shard count: {shardCount.ActiveShards}, Ingress count: {ingressCount.ActiveIngress}, inclusive: {typeof(ClusterCoordinator)}");
 
-            var result = shardCount.ActiveShards + ingressCount.ActiveIngress;
-            Sender.Tell(new NodeInClusterResponse(result));
+            int result = shardCount.ActiveShards + ingressCount.ActiveIngress;
+            Sender.Tell(new NodeInClusterResponse(++result));
         });
     }
 }
