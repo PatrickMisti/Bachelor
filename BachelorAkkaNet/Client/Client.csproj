@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Akka" />
+		<PackageReference Include="Akka.Cluster" />
+		<PackageReference Include="Akka.Cluster.Tools" />
+		<PackageReference Include="Akka.Logger.Serilog" />
+		<PackageReference Include="Akka.Serialization.Hyperion" />
+		<PackageReference Include="Serilog.Sinks.File" />
+		<PackageReference Include="Spectre.Console" />
+		<PackageReference Include="Serilog" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+	</ItemGroup>
+
+</Project>
