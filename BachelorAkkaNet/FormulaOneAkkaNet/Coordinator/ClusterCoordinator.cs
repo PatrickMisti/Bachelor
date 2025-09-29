@@ -55,5 +55,15 @@ public class ClusterCoordinator : ReceiveActor
             _logger.Debug($"Ingress activate request. Shard active: {_hasShardRegion}");
             Sender.Tell(new IngressConnectivityResponse(_hasShardRegion));
         });
+
+        ReceiveAsync<NodeInClusterRequest>(async _ =>
+        {
+            var shardCount = await _shardListener.Ask<ShardCountResponse>(ShardCountRequest.Instance);
+            var ingressCount = await _ingressListener.Ask<ShardCountResponse>(IngressCountRequest.Instance);
+            _logger.Info($"Status: Shard count: {shardCount.ActiveShards}, Ingress count: {ingressCount.ActiveShards}");
+
+            var result = shardCount.ActiveShards + ingressCount.ActiveShards;
+            Sender.Tell(new NodeInClusterResponse(result));
+        });
     }
 }

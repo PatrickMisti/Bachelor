@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.Event;
+using FormulaOneAkkaNet.Coordinator.Broadcasts;
 using FormulaOneAkkaNet.Coordinator.Messages;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
@@ -39,6 +40,8 @@ public class IngressListener(IActorRef controller) : BaseDebounceListener(contro
             Logger.Debug($"Auto send to shard is {isOnline} and ingress will be notified!");
             Context.PubSub().Ingress.Publish(new NotifyIngressShardIsOnline(msg.IsShardOnline));
         });
+
+        Receive<IngressCountRequest>(_ => Sender.Tell(new IngressCountResponse(_activeIngress.Count)));
     }
 
     private void HandleClusterEvents()

@@ -4,7 +4,7 @@ using Infrastructure.General;
 
 string defaultUrl = "https://api.openf1.org";
 string defaultNodeName = "backend";
-int defaultPort = 7000;
+int defaultPort = 5000;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -22,10 +22,8 @@ var roles = rolesArg?
 
 if (roles.Contains(ClusterMemberRoles.Controller.ToStr()) && roles.Count == 1)
     defaultPort = 6000;
-else if (roles.Contains(ClusterMemberRoles.Backend.ToStr()) && roles.Count == 1)
-    defaultPort = 5000;
-else if (roles.Count > 1)
-    defaultPort = 5000;
+else if (roles.Contains(ClusterMemberRoles.Ingress.ToStr()) && roles.Count == 1)
+    defaultPort = 7000;
 
 var akkaHc = new AkkaConfig
 {

@@ -12,6 +12,9 @@ public class ShardListener(IActorRef controller) : BaseDebounceListener(controll
     public override void Activated()
     {
         Logger.Info("Activate Handlers in ShardListener!");
+
+        Receive<ShardCountRequest>(_ => Sender.Tell(new ShardCountResponse(_activeBackends.Count)));
+
         HandleClusterEvents();
     }
 

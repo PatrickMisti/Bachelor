@@ -6,3 +6,17 @@ public record ShardConnectionRequest
 
     private ShardConnectionRequest() { }
 }
+
+public record ShardCountRequest
+{
+    public static ShardCountRequest Instance => new();
+
+    private ShardCountRequest() { }
+}
+
+public record IngressCountRequest
+{
+    public static IngressCountRequest Instance => new();
+
+    private IngressCountRequest() { }
+}
