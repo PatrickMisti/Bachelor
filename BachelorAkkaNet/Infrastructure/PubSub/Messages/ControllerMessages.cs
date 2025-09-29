@@ -1,10 +1,8 @@
 ﻿namespace Infrastructure.PubSub.Messages;
 
-public record NodeInClusterRequest : IPubMessage
+public sealed record NodeInClusterRequest() : IPubMessage
 {
-    public static NodeInClusterRequest Instance => new();
-
-    private NodeInClusterRequest() { }
+    public static NodeInClusterRequest Instance { get; } = new();
 }
 
 public record NodeInClusterResponse(int IsInCluster) : IPubMessage;
