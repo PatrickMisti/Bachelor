@@ -1,6 +1,5 @@
 ﻿using Akka.Actor;
 using Akka.Event;
-using FormulaOneAkkaNet.Coordinator.Broadcasts;
 using FormulaOneAkkaNet.Coordinator.Messages;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
@@ -23,14 +22,14 @@ public class IngressListener(IActorRef controller) : BaseDebounceListener(contro
         // External request from ingress to check if shard is available
         // Request from ingress if shard is available
         // [Obsolete] directly ask controller
-        ReceiveAsync<IngressConnectivityRequest>(async _ =>
+        /*ReceiveAsync<IngressConnectivityRequest>(async _ =>
         {
             var res = await Controller.Ask<IngressActivateResponse>(IngressActivateRequest.Instance);
             var isActive = _activeIngress.Count > 0 && res.CanBeActivated;
 
             Logger.Debug($"Ingress connectivity request. Active: {isActive}");
             Sender.Tell(new IngressConnectivityResponse(isActive));
-        });
+        });*/
 
         // Internal request from controller to notify ingress
         // Auto send to ingress when shard status changes

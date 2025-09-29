@@ -4,6 +4,7 @@ using Akka.Hosting;
 using FormulaOneAkkaNet.Coordinator.Broadcasts;
 using FormulaOneAkkaNet.Coordinator.Listeners;
 using FormulaOneAkkaNet.Coordinator.Messages;
+using Infrastructure.PubSub.Messages;
 
 namespace FormulaOneAkkaNet.Coordinator;
 
@@ -43,7 +44,7 @@ public class ClusterCoordinator : ReceiveActor
             _ingressListener.Tell(new IngressConnectionCanActivated(_hasShardRegion));
         });
 
-        ReceiveAsync<IngressActivateRequest>(async _ =>
+        ReceiveAsync<IngressConnectivityRequest>(async _ =>
         {
             if (!_hasShardRegion)
             {
@@ -52,7 +53,7 @@ public class ClusterCoordinator : ReceiveActor
             }
 
             _logger.Debug($"Ingress activate request. Shard active: {_hasShardRegion}");
-            Sender.Tell(new IngressActivateResponse(_hasShardRegion));
+            Sender.Tell(new IngressConnectivityResponse(_hasShardRegion));
         });
     }
 }

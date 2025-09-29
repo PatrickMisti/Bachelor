@@ -45,11 +45,11 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         ReceiveAsync<ShardConnectionAvailableRequest>(async _ =>
         {
-            var res = await _controller.Ask<IngressActivateResponse>(IngressActivateRequest.Instance);
-            _log.Info($"Got response from controller with shard is online: {res.CanBeActivated}");
-            Sender.Tell(new ShardConnectionAvailableResponse(res.CanBeActivated));
+            var res = await _controller.Ask<IngressConnectivityResponse>(IngressConnectivityRequest.Instance);
+            _log.Info($"Got response from controller with shard is online: {res.ShardAvailable}");
+            Sender.Tell(new ShardConnectionAvailableResponse(res.ShardAvailable));
 
-            if (res.CanBeActivated && !_pipeline.IsRunning)
+            if (res.ShardAvailable && !_pipeline.IsRunning)
                 _pipeline.StartPush(workerCount: 4);
         });
 
