@@ -1,12 +1,10 @@
-﻿using Client.Benchmark;
+﻿using Client.Utility;
 using Spectre.Console;
 
-namespace Client.Utility;
+namespace Client.Benchmark;
 
 internal class ScreenView(BenchmarkTui tui)
 {
-    private readonly BenchmarkTui _tui = tui;
-
     public Panel Render()
     {
         return new Panel(BuildGrid())
@@ -18,7 +16,7 @@ internal class ScreenView(BenchmarkTui tui)
     {
         var g = new Grid().AddColumn().AddColumn();
         g.AddRow(ThroughputPanel(), LatencyPanel());
-        g.AddRow(ClusterPanel(), RebalancePanel());
+        g.AddRow(ClusterPanel(), ShowRaceSessions());
         g.AddRow(ControlsPanel());
         return g;
     }
@@ -69,17 +67,29 @@ internal class ScreenView(BenchmarkTui tui)
         return new Panel(t).Header("Cluster & Shards", Justify.Left);
     }
 
-    private static Panel RebalancePanel()
+    private Panel ShowRaceSessions()
     {
-        var m = MetricsSnapshot.Current;
-        var t = new Table().NoBorder().AddColumn("Time").AddColumn("Event");
+        var sessions = tui.Sessions;
 
-        foreach (var ev in m.RebalanceTimeline.ToArray())
-            t.AddRow(ev.Timestamp.ToString("HH:mm:ss"), ev.Type);
+        var t = new Table().NoBorder().HideHeaders();
 
-        var status = new Markup($"Status: [green]{Markup.Escape(m.RebalanceStatus)}[/]");
 
-        return new Panel(new Rows(status, t)).Header("Rebalancing", Justify.Left);
+        t.AddColumn(new TableColumn("").LeftAligned());
+        t.AddColumn(new TableColumn("").LeftAligned());
+
+        if (sessions is null)
+        {
+            t.AddRow("Location:", "N/A");
+            t.AddRow("Country:", "N/A");
+        }
+        else
+        {
+            var first = sessions.First(x => x.selected).race;
+            t.AddRow("Location:", first.CircuitName ?? "N/A");
+            t.AddRow("Country:", first.CountryName ?? "N/A");
+        }
+
+        return new Panel(t).Header("Race", Justify.Left);
     }
 
 
@@ -87,7 +97,9 @@ internal class ScreenView(BenchmarkTui tui)
     {
         var grid = new Grid().AddColumn().AddColumn().AddColumn().AddColumn();
         grid.AddRow(
-            "[[F5]] Connection", "[[F6]] Measure"
+            "[[F5]] Connection", 
+            "[[F6]] Measure [[\u2191|\u2193]] Change Race",
+            "[[S]] Start"
         );
         return new Panel(grid).Header("Controls", Justify.Left);
     }

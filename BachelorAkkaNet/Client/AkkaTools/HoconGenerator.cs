@@ -18,13 +18,24 @@ internal static class HoconGenerator
                                       }
                                     }
                                   
-                                    remote.dot-netty.tcp { hostname = "localhost", port = 0 }
+                                    remote.dot-netty.tcp { 
+                                        hostname = "localhost", 
+                                        port = 0 
+                                        
+                                        # Standard ist 128000b – hier z.B. 1 MiB
+                                        maximum-frame-size = 2MiB
+                                  
+                                        # optional etwas großzügiger puffern
+                                        send-buffer-size    = 2MiB
+                                        receive-buffer-size = 2MiB
+                                    
+                                    }
                                   
                                     cluster {
                                       roles = ["api"]
                                       seed-nodes = [
-                                        "akka.tcp://cluster-system@localhost:5000",
-                                        "akka.tcp://cluster-system@localhost:6000"
+                                        "akka.tcp://cluster-system@localhost:5000"#,
+                                        #"akka.tcp://cluster-system@localhost:6000"
                                       ]
                                     }
                                   }

@@ -1,9 +1,12 @@
-﻿using System.Collections.Concurrent;
+﻿namespace Client.Utility;
 
-namespace Client.Utility;
 
-public record ClusterSnapshot(int Nodes, int Shards, int Entities, Dictionary<string, int> ShardDistribution, string RebalanceStatus);
-
+public record ClusterSnapshot(
+    int Nodes,
+    int Shards,
+    int Entities,
+    Dictionary<string, int> ShardDistribution,
+    string RebalanceStatus);
 
 public record MetricsUpdate(
     double ThroughputPerSec,
@@ -11,18 +14,9 @@ public record MetricsUpdate(
     double ErrorPercent,
     int Messages,
     TimeSpan RunningFor,
-    ClusterSnapshot? Cluster
+    ClusterSnapshot? Cluster = null,
+    int? ActiveStreams = null // optional: Gauge aus Aggregator
 );
-
-
-public record ClusterEvent(string Type, DateTime Timestamp);
-
-public sealed record MetricsSample(double LatencyMs, bool Success, int Messages = 1);
-
-public interface IMetricsSink
-{
-    void Publish(MetricsSample sample);
-}
 
 public class MetricsSnapshot
 {
@@ -46,11 +40,6 @@ public class MetricsSnapshot
     public int Shards { get; set; } = 0;
     public int Entities { get; set; } = 0;
     public Dictionary<string, int> ShardDist { get; set; } = new();
-    public string RebalanceStatus { get; set; } = "Idle";
-
-
-    public ConcurrentQueue<ClusterEvent> RebalanceTimeline { get; } = new();
-
 
     public static void Update(MetricsSnapshot next) => _current = next;
 }

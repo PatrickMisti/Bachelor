@@ -10,6 +10,7 @@
 	<ItemGroup>
 		<PackageReference Include="Akka" />
 		<PackageReference Include="Akka.Cluster" />
+		<PackageReference Include="Akka.Cluster.Sharding" />
 		<PackageReference Include="Akka.Cluster.Tools" />
 		<PackageReference Include="Akka.Logger.Serilog" />
 		<PackageReference Include="Akka.Serialization.Hyperion" />

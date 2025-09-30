@@ -1,5 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Collections;
+using System.Collections.Concurrent;
 using Client.Utility;
+using Infrastructure.General;
 using Spectre.Console;
 
 namespace Client.Benchmark;
@@ -17,6 +19,8 @@ public class BenchmarkTui
 
     private readonly MetricsSnapshot _metrics = new();
     private readonly State _state = new();
+
+    public List<(bool selected, RaceSession race)>? Sessions;
 
     public BenchmarkTui(IBenchmarkService service, CancellationToken stop)
     {
@@ -56,11 +60,14 @@ public class BenchmarkTui
         _metrics.TimeRunning = e.RunningFor;
 
 
-        _metrics.Nodes = e.Cluster?.Nodes ?? _metrics.Nodes;
-        _metrics.Shards = e.Cluster?.Shards ?? _metrics.Shards;
-        _metrics.Entities = e.Cluster?.Entities ?? _metrics.Entities;
-        _metrics.ShardDist = e.Cluster?.ShardDistribution ?? _metrics.ShardDist;
-        _metrics.RebalanceStatus = e.Cluster?.RebalanceStatus ?? _metrics.RebalanceStatus;
+        if (e.Cluster is { } c)
+        {
+            _metrics.Nodes = c.Nodes;
+            _metrics.Shards = c.Shards;
+            _metrics.Entities = c.Entities;
+            _metrics.ShardDist = c.ShardDistribution;
+            //_metrics.RebalanceStatus = c.RebalanceStatus;
+        }
 
         MetricsSnapshot.Update(_metrics);
     }
@@ -71,7 +78,7 @@ public class BenchmarkTui
         _metrics.Shards = snapshot.Shards;
         _metrics.Entities = snapshot.Entities;
         _metrics.ShardDist = snapshot.ShardDist;
-        _metrics.RebalanceStatus = snapshot.RebalanceStatus;
+        //_metrics.RebalanceStatus = snapshot.RebalanceStatus;
 
         MetricsSnapshot.Update(_metrics);
     }
@@ -115,50 +122,57 @@ public class BenchmarkTui
             var key = Console.ReadKey(intercept: true).Key;
             switch (key)
             {
-                /*case ConsoleKey.F5: 
-                    _state.Mode = RunMode.Warmup; 
-                    await _service.StartWarmupAsync(durationSec: 5); 
+                case ConsoleKey.UpArrow:
+                    MoveSelection(-1);
                     break;
-                case ConsoleKey.F6: _state.Mode = RunMode.Measure; 
-                    await _service.StartMeasureAsync(durationSec: 30, parallelism: _state.Parallelism, rps: _state.Rps); 
+                case ConsoleKey.DownArrow:
+                    MoveSelection(+1);
                     break;
-                case ConsoleKey.F7: 
-                    await _service.TriggerBurstAsync(count: 1000);
+                case ConsoleKey.S:
+                    if (Sessions is not null && Sessions.Count > 0)
+                    {
+                        var race = Sessions.First(x => x.selected).race;
+                        await _service.StartSelectedRace(race);
+                    }
                     break;
-                case ConsoleKey.F8:
-                    await _service.RampUpAsync(startRps: 100, endRps: 2000, seconds: 20);
-                    break;
-                case ConsoleKey.N: 
-                    await _service.AddNodeAsync(); 
-                    break;
-                case ConsoleKey.K: 
-                    await _service.KillNodeAsync(); 
-                    break;
-                case ConsoleKey.S: 
-                    await _service.ExportCsvAsync("latencies.csv");
-                    break;
-                case ConsoleKey.UpArrow: 
-                    _state.Rps = Math.Min(_state.Rps + 100, 100_000); 
-                    break;
-                case ConsoleKey.DownArrow: 
-                    _state.Rps = Math.Max(_state.Rps - 100, 0); 
-                    break;
-                case ConsoleKey.RightArrow: 
-                    _state.Parallelism = Math.Min(_state.Parallelism + 1, 256); 
-                    break;
-                case ConsoleKey.LeftArrow: 
-                    _state.Parallelism = Math.Max(_state.Parallelism - 1, 1); 
-                    break;*/
                 case ConsoleKey.F5:
                     await _service.CheckConnectionsAsync();
                     break;
                 case ConsoleKey.F6:
-                    await _service.CheckMeasuringAsync();
+                    var result = await _service.CheckMeasuringAsync();
+                    Sessions = result?.Select((x,index) => (index == 0, x)).ToList() ?? null;
                     break;
                 case ConsoleKey.Escape: 
                     _service.Stop();
                     return;
             }
         }
+    }
+
+    private void MoveSelection(int delta)
+    {
+        if (Sessions is null || Sessions.Count == 0) return;
+
+        var index = Sessions.FindIndex(x => x.selected);
+
+        if (index < 0)
+        {
+            var first = Sessions[0];
+            first.selected = true;
+            Sessions[0] = first;
+            return;
+        }
+
+        var next = index + delta;
+
+        if (next < 0 || next >= Sessions.Count) return;
+
+        var cur = Sessions[index];
+        cur.selected = false;
+        Sessions[index] = cur;
+
+        var tgt = Sessions[next];
+        tgt.selected = true;
+        Sessions[next] = tgt;
     }
 }

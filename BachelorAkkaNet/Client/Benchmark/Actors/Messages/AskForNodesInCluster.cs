@@ -1,9 +1,9 @@
 ﻿namespace Client.Benchmark.Actors.Messages;
 
-public class AskForNodesInClusterRequest
+internal class AskForNodesInClusterRequest
 {
     public static AskForNodesInClusterRequest Instance { get; } = new();
     private AskForNodesInClusterRequest() { }
 }
 
-public record AskForNodesInClusterResponse(int Nodes);
+internal record AskForNodesInClusterResponse(int Nodes);
