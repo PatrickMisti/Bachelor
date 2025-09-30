@@ -167,7 +167,13 @@ internal static class AkkaBootstrapExtensions
 
     private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
     {
-        config.WithShardRegionProxy<DriverRegionProxyMarker>(
+        string role = ClusterMemberRoles.Ingress.ToStr();
+        config
+            .WithSingleton<HttpWrapperClientMarker>(
+                singletonName: role,
+                propsFactory: (_, _, resolver) => resolver.Props<IngressHttpActor>(),
+                options: new ClusterSingletonOptions {Role = akkaHc.Role})
+            .WithShardRegionProxy<DriverRegionProxyMarker>(
                 typeName: akkaHc.ShardName,
                 roleName: ClusterMemberRoles.Backend.ToStr(), // null!, <-- when all nodes can host the shard region
                 messageExtractor: new DriverMessageExtractor())

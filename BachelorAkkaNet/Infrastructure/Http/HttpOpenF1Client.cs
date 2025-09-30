@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using Infrastructure.General;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Http;
@@ -65,6 +66,15 @@ public class HttpOpenF1Client(HttpClient http, ILogger<HttpOpenF1Client> logger)
             logger.LogError(ex, "OpenF1PollingClient.FetchNextBatch failed for sessionKey={Session}", sessionKey);
             return null;
         }
+    }
+
+    public async Task<IReadOnlyList<RaceSessionDto>?> GetRaceSessionsAsync(int season, SessionTypes types, CancellationToken? cancellationToken = null)
+    {
+        var url = $"/v1/sessions?year={season}&&session_type={types.ToStr()}";
+
+        var json = await GetStringAsync(url, cancellationToken ?? CancellationToken.None);
+
+        return JsonSerializer.Deserialize<List<RaceSessionDto>>(json, _options);
     }
 
     private async Task<string> GetStringAsync(string url, CancellationToken token)

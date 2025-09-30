@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Infrastructure.General;
 using Infrastructure.ShardRegion;
 
 namespace Infrastructure.Http;
@@ -38,6 +39,23 @@ public sealed record TelemetryDateDto(
     [property: JsonPropertyName(name: "rpm")] int Rpm,
     [property: JsonPropertyName("date")] DateTimeOffset CurrentDateTime) : IOpenF1Dto;
 
+public record RaceSessionDto(
+    [property: JsonPropertyName("meeting_key")] int MeetingKey,
+    [property: JsonPropertyName("session_key")] int SessionKey,
+    [property: JsonPropertyName("location")] string Location,
+    [property: JsonPropertyName("date_start")] DateTimeOffset DateStart,
+    [property: JsonPropertyName("date_end")] DateTimeOffset DateEnd,
+    [property: JsonPropertyName("session_type")] string SessionType,
+    [property: JsonPropertyName("session_name")] string SessionName,
+    [property: JsonPropertyName("country_key")] int CountryKey,
+    [property: JsonPropertyName("country_code")] string CountryCode,
+    [property: JsonPropertyName("country_name")] string CountryName,
+    [property: JsonPropertyName("circuit_key")] int CircuitKey,
+    [property: JsonPropertyName("circuit_short_name")] string CircuitShortName,
+    [property: JsonPropertyName("gmt_offset")] string GmtOffset,
+    [property: JsonPropertyName("year")] int Year
+) : IOpenF1Dto;
+
 
 
 public static class OpenF1DtoExtensions
@@ -66,4 +84,7 @@ public static class OpenF1DtoExtensions
         new(DriverKey.Create(dto.SessionKey, dto.DriverNumber),
             dto.Speed,
             dto.CurrentDateTime.UtcDateTime);
+
+    public static RaceSession ToMap(this RaceSessionDto dto) =>
+        new(dto.SessionKey, dto.CountryName, dto.CircuitShortName);
 }

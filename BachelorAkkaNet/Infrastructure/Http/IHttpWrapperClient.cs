@@ -1,4 +1,6 @@
-﻿namespace Infrastructure.Http;
+﻿using Infrastructure.General;
+
+namespace Infrastructure.Http;
 
 public interface IHttpWrapperClient
 {
@@ -9,4 +11,6 @@ public interface IHttpWrapperClient
     Task<IReadOnlyList<IntervalDriverDto>?> GetIntervalDriversAsync(int sessionKey, CancellationToken? cancellationToken = null);
 
     Task<IReadOnlyList<IOpenF1Dto>?> FetchNextBatch(int sessionKey, CancellationToken? cancellationToken = null);
+
+    Task<IReadOnlyList<RaceSessionDto>?> GetRaceSessionsAsync(int season, SessionTypes types, CancellationToken? cancellationToken = null);
 }
