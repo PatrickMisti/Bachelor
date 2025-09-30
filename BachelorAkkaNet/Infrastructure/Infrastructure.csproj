@@ -1,8 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Akka.Cluster.Sharding" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Akka" />
+    <PackageReference Include="Akka.Streams" />
     <PackageReference Include="Akka.Cluster.Tools" />
   </ItemGroup>
 

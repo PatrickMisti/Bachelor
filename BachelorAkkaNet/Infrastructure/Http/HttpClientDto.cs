@@ -9,8 +9,8 @@ public interface IOpenF1Dto;
 public sealed record IntervalDriverDto(
     [property: JsonPropertyName(name: "session_key")] int SessionKey,
     [property: JsonPropertyName(name: "driver_number")] int DriverNumber,
-    [property: JsonPropertyName(name: "interval")] double? Interval,
-    [property: JsonPropertyName(name: "gap_to_leader")] double? GapToLeader,
+    [property: JsonPropertyName(name: "interval")][property: JsonConverter(typeof(LenientDoubleConverter))] double? Interval,
+    [property: JsonPropertyName(name: "gap_to_leader")][property: JsonConverter(typeof(LenientDoubleConverter))] double? GapToLeader,
     [property: JsonPropertyName(name: "date")] DateTimeOffset CurrentDateTime) : IOpenF1Dto;
 
 public sealed record PersonalDriverDataDto(

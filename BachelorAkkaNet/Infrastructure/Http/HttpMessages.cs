@@ -1,4 +1,6 @@
-﻿using Infrastructure.General;
+﻿using Akka.Streams;
+using Infrastructure.General;
+using Infrastructure.ShardRegion;
 
 namespace Infrastructure.Http;
 
@@ -22,6 +24,29 @@ public record HttpGetRaceSessionsResponse
     public HttpGetRaceSessionsResponse(string errorMessage)
     {
         Sessions = Array.Empty<RaceSession>();
+        IsSuccess = false;
+        ErrorMessage = errorMessage;
+    }
+}
+
+public record HttpStartRaceSessionRequest(int SessionKey);
+
+public record HttpStartRaceSessionResponse
+{
+    public ISourceRef<IEnumerable<IHasDriverId>> Data { get; init; }
+    public bool IsSuccess { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public HttpStartRaceSessionResponse(ISourceRef<IEnumerable<IHasDriverId>> data)
+    {
+        Data = data;
+        IsSuccess = true;
+        ErrorMessage = null;
+    }
+
+    public HttpStartRaceSessionResponse(string errorMessage)
+    {
+        Data = null!;
         IsSuccess = false;
         ErrorMessage = errorMessage;
     }

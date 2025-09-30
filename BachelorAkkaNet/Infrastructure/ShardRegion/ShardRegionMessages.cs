@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Infrastructure.ShardRegion;
+﻿namespace Infrastructure.ShardRegion;
 
 public interface IHasDriverId
 {

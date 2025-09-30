@@ -6,6 +6,7 @@
     <PackageVersion Include="Akka" Version="1.5.49" />
     <PackageVersion Include="Akka.Cluster" Version="1.5.49" />
     <PackageVersion Include="Akka.Cluster.Hosting" Version="1.5.49" />
+    <PackageVersion Include="Akka.Cluster.Sharding" Version="1.5.49" />
     <PackageVersion Include="Akka.Cluster.Tools" Version="1.5.49" />
     <PackageVersion Include="Akka.Hosting" Version="1.5.49" />
     <PackageVersion Include="Akka.Persistence" Version="1.5.49" />
