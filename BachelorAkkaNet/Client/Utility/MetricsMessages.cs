@@ -17,6 +17,12 @@ public record MetricsUpdate(
 
 public record ClusterEvent(string Type, DateTime Timestamp);
 
+public sealed record MetricsSample(double LatencyMs, bool Success, int Messages = 1);
+
+public interface IMetricsSink
+{
+    void Publish(MetricsSample sample);
+}
 
 public class MetricsSnapshot
 {

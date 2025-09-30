@@ -8,6 +8,7 @@ public interface IBenchmarkService
     event Action<MetricsSnapshot>? ClusterNodes;
 
     Task StartAsync();
+    Task CheckMeasuringAsync();
     Task CheckConnectionsAsync();
     void Stop();
 

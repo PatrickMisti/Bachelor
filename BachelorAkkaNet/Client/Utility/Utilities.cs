@@ -1,4 +1,8 @@
-﻿namespace Client.Utility;
+﻿using Akka.Actor;
+using Akka.Cluster.Tools.Singleton;
+using Infrastructure.General;
+
+namespace Client.Utility;
 
 public static class Percentiles
 {
@@ -25,5 +29,25 @@ public class RollingWindow<T> where T : struct, IComparable<T>
         var arr = _q.ToArray();
         Array.Sort(arr);
         return arr;
+    }
+}
+
+public static class ProxyGenerator
+{
+    public static ClusterSingletonProxySettings CreateProxySettings(ActorSystem system, ClusterMemberRoles role) =>
+        ClusterSingletonProxySettings
+            .Create(system)
+            .WithRole(role.ToStr())
+            .WithSingletonName(role.ToStr());
+
+    public static IActorRef CreateProxy(this ActorSystem system, ClusterMemberRoles role)
+    {
+        var proxySettings = CreateProxySettings(system, role);
+
+        return system.ActorOf(
+            props: ClusterSingletonProxy.Props(
+                singletonManagerPath: $"/user/{role.ToStr()}",
+                settings: proxySettings),
+            name: $"{role.ToStr()}-api-proxy");
     }
 }

@@ -152,6 +152,9 @@ public class BenchmarkTui
                 case ConsoleKey.F5:
                     await _service.CheckConnectionsAsync();
                     break;
+                case ConsoleKey.F6:
+                    await _service.CheckMeasuringAsync();
+                    break;
                 case ConsoleKey.Escape: 
                     _service.Stop();
                     return;
