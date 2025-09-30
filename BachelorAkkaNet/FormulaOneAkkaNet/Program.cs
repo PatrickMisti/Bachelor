@@ -5,7 +5,9 @@ using Infrastructure.General;
 string defaultUrl = "https://api.openf1.org";
 string defaultNodeName = "backend";
 int defaultPort = 5000;
-
+#if DEBUG
+Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+#endif
 var builder = Host.CreateApplicationBuilder(args);
 
 var rolesArg = args.Length > 0 ? args[0] : null;

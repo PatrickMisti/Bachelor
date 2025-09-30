@@ -48,7 +48,14 @@ public static class DefaultServiceProviderExtensions
                     SeedNodes = config.Roles.Count == 1 ? config.SeedNodes : [config.SeedNodes.First()],
                     Roles = config.Roles.ToArray()
                 })
-            .WithDistributedPubSub(role: null!);
+            .WithDistributedPubSub(role: null!)
+            .AddHocon("""
+                          akka.remote.dot-netty.tcp {
+                            maximum-frame-size  = 2 MiB
+                            send-buffer-size    = 2 MiB
+                            receive-buffer-size = 2 MiB
+                          }
+                          """, HoconAddMode.Append);
 
         return builder;
     }
@@ -78,7 +85,7 @@ public static class DefaultServiceProviderExtensions
                 serializerFactory: system => new HyperionSerializer(system))
             .AddHocon(
                 HyperionSerializer.DefaultConfiguration(),
-                HoconAddMode.Prepend);
+                HoconAddMode.Append);
 
         return builder;
     }
