@@ -13,4 +13,7 @@ public interface IBenchmarkService
     void Stop();
     Task StartSelectedRace(RaceSession race);
     Task StartSelectedRaceByRegion(RaceSession race);
+    Task ChangePipelineMode();
+
+    void KillPoll();
 }

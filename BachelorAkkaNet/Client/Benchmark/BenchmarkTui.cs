@@ -142,6 +142,14 @@ public class BenchmarkTui
                         await _service.StartSelectedRaceByRegion(race);
                     }
                     break;
+                case ConsoleKey.C:
+                    if (Sessions is not null && Sessions.Count > 0)
+                        await _service.ChangePipelineMode();
+                    break;
+                case ConsoleKey.K:
+                    if (Sessions is not null && Sessions.Count > 0)
+                        _service.KillPoll();
+                    break;
                 case ConsoleKey.F5:
                     await _service.CheckConnectionsAsync();
                     break;

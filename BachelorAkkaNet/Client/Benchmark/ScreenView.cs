@@ -100,7 +100,7 @@ internal class ScreenView(BenchmarkTui tui)
         grid.AddRow(
             "[[F5]] Connection", 
             "[[F6]] Measure [[\u2191|\u2193]] Change Race",
-            "[[S]] Start [[D]] WithRegion"
+            "[[S]] Start [[D]] WithRegion [[C]] Change Pipe [[K]] KillPoll"
         );
         return new Panel(grid).Header("Controls", Justify.Left);
     }

@@ -193,6 +193,15 @@ public sealed class ApiController : ReceivePubSubActor<IPubSubTopicApi>
 
         Receive<AskForRaceDataByRegionRequest>(msg =>
             Context.ActorOf(RegionNotifyOnceSessionActor.Props(Sender, _ingress, _metricsSink, msg.SessionKey)));
+
+        ReceiveAsync<AskForChangePipelineModeRequest>(async _ =>
+        {
+            var res = await _ingress.Ask<HttpPipelineModeChangeResponse>(new HttpPipelineModeChangeRequest());
+            string s = res.CurrentMode == Mode.Polling ? "Poll" : "Push";
+            Sender.Tell(new AskForChangePipelineModeResponse(s));
+        });
+
+        Receive<AskForKillingPollingMessage>(_ => _ingress.Tell(new HttpKillPipeline()));
     }
 
     public static Props Prop(IActorRef proxyController, IActorRef proxyIngress, IMetricsPublisher sink) => 

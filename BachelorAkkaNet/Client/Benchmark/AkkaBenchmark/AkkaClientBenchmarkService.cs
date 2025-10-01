@@ -8,8 +8,6 @@ using Client.Benchmark.Actors;
 using Client.Benchmark.Actors.Messages;
 using Client.Utility;
 using Infrastructure.General;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace Client.Benchmark.AkkaBenchmark;
 
@@ -117,6 +115,30 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
         _ = CheckConnectionsAsync();
 
         return Task.CompletedTask;
+    }
+
+    public async Task ChangePipelineMode()
+    {
+        _logger.Info("Change pipeline mode");
+        var result = await _apiController.Ask<AskForChangePipelineModeResponse>(new AskForChangePipelineModeRequest());
+
+        var current = MetricsSnapshot.Current;
+
+        ClusterNodes?.Invoke(new MetricsSnapshot
+        {
+            Nodes = current.Nodes,
+            Shards = current.Shards,
+            Entities = current.Entities,
+            ShardDist = current.ShardDist,
+            PipelineMode = result.Mode
+        });
+    }
+
+    public void KillPoll()
+    {
+        _logger.Info("Kill poll");
+
+        _apiController.Tell(new AskForKillingPollingMessage());
     }
 
     public void Stop()
