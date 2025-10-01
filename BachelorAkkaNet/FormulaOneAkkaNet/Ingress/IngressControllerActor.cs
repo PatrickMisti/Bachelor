@@ -87,7 +87,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         {
             _log.Debug("Start polling stream pipeline ingress");
             var pollClient = _sp.GetRequiredService<IHttpWrapperClient>();
-            _pipeline.StartPolling(pollClient, m.Interval, _workerCount);
+            //_pipeline.StartPolling(pollClient,  _workerCount);
         });
 
         Receive<StopPipeline>(_ =>
@@ -126,11 +126,10 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         var pollClient = _sp.GetRequiredService<IHttpWrapperClient>();
         if (sessionKey is not null)
-            _pipeline.StartPolling(pollClient, TimeSpan.FromSeconds(4), (int)sessionKey, worker);
+            _pipeline.StartPolling(pollClient, (int)sessionKey, worker);
         else
             Self.Tell(new PipelineModeChangeRequest(Mode.Polling));
     }
-        
 
     private async Task StartPushStreamClient(int sessionKey)
     {

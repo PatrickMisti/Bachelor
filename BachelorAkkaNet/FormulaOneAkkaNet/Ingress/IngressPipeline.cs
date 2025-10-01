@@ -92,7 +92,7 @@ public class IngressPipeline
     }
 
     /// <summary>Start polling mode (Tick + FetchNextBatch).</summary>
-    public void StartPolling(IHttpWrapperClient pollClient, TimeSpan interval, int sessionKey, int workerCount = 4)
+    public void StartPolling(IHttpWrapperClient pollClient, int sessionKey, int workerCount = 4)
     {
         StopInternal();
 
@@ -100,7 +100,7 @@ public class IngressPipeline
 
         // Polling source materializes ICancelable (the Tick), we don't really need to keep it
         var pollingSource =
-            Source.Tick(TimeSpan.Zero, interval, NotUsed.Instance)
+            Source.Tick(TimeSpan.Zero, TimeSpan.FromSeconds(1), NotUsed.Instance)
                   .SelectAsync(1, async _ =>
                   {
                       var batch = await pollClient.FetchNextBatch(sessionKey, CancellationToken.None).ConfigureAwait(false);
@@ -145,7 +145,7 @@ public class IngressPipeline
         _kill = RunnableGraph.FromGraph(graph).Run(_mat);
         _mode = Mode.Polling;
         _running = true;
-        _log.Info("IngressPipeline started in POLLING mode every {0} with {1} workers.", interval, workerCount);
+        _log.Info("IngressPipeline started in POLLING mode every {0} with {1} workers.", workerCount);
     }
 
     public async Task<bool> OfferAsync(IOpenF1Dto dto)
