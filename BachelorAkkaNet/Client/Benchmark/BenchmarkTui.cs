@@ -66,7 +66,7 @@ public class BenchmarkTui
             _metrics.Shards = c.Shards;
             _metrics.Entities = c.Entities;
             _metrics.ShardDist = c.ShardDistribution;
-            //_metrics.RebalanceStatus = c.RebalanceStatus;
+            _metrics.PipelineMode = c.PipelineMode;
         }
 
         MetricsSnapshot.Update(_metrics);
@@ -78,7 +78,7 @@ public class BenchmarkTui
         _metrics.Shards = snapshot.Shards;
         _metrics.Entities = snapshot.Entities;
         _metrics.ShardDist = snapshot.ShardDist;
-        //_metrics.RebalanceStatus = snapshot.RebalanceStatus;
+        _metrics.PipelineMode = snapshot.PipelineMode;
 
         MetricsSnapshot.Update(_metrics);
     }
@@ -133,6 +133,13 @@ public class BenchmarkTui
                     {
                         var race = Sessions.First(x => x.selected).race;
                         await _service.StartSelectedRace(race);
+                    }
+                    break;
+                case ConsoleKey.D:
+                    if (Sessions is not null && Sessions.Count > 0)
+                    {
+                        var race = Sessions.First(x => x.selected).race;
+                        await _service.StartSelectedRaceByRegion(race);
                     }
                     break;
                 case ConsoleKey.F5:

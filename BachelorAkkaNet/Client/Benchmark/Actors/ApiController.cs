@@ -12,6 +12,8 @@ using Infrastructure.PubSub.Messages;
 using Infrastructure.ShardRegion;
 using System.Diagnostics;
 using Akka.Cluster.Sharding;
+using Akka.Util;
+using Infrastructure.ShardRegion.Messages;
 using Infrastructure.ShardRegion.Utilities;
 using Serilog;
 
@@ -109,17 +111,44 @@ public sealed class ApiController : ReceivePubSubActor<IPubSubTopicApi>
                 }
                 else
                 {
-                    await resp.Data.Source
+                    _metricsSink.Publish(new StreamStarted());
+
+                    var runTask = resp.Data.Source
                         .Buffer(8, OverflowStrategy.Backpressure)
                         .Select(batch =>
                         {
-                            _metricsSink.Publish(new StreamBatch(batch.Count(), sw.ElapsedMilliseconds, true));
+                            var list = batch as IList<IHasDriverId> ?? batch.ToList();
+                            var cnt = list.Count;
 
+                            if (cnt == 0)
+                            {
+                                _metricsSink.Publish(new StreamBatch(0, sw.ElapsedMilliseconds, false));
+                                return NotUsed.Instance;
+                            }
+
+                            Interlocked.Add(ref messagesCount, cnt);
+                            _metricsSink.Publish(new StreamBatch(cnt, sw.ElapsedMilliseconds, true));
+                            return NotUsed.Instance;
+                        }).Recover(ex =>
+                        {
+                            Logger.Error(ex, "Stream failed unexpectedly");
+                            _metricsSink.Publish(new StreamBatch(1, sw.ElapsedMilliseconds, false));
                             return NotUsed.Instance;
                         })
                         .RunWith(Sink.Ignore<NotUsed>(), Context.Materializer());
-                    success = true;
-                    _metricsSink.Publish(new StreamEnded(true));
+
+                    try
+                    {
+                        await runTask;
+                        success = true;
+                        _metricsSink.Publish(new StreamEnded(true));
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, "Stream aborted");
+                        success = false;
+                        _metricsSink.Publish(new StreamEnded(false));
+                    }
                 }
             }
             catch (AskTimeoutException e)
@@ -133,11 +162,13 @@ public sealed class ApiController : ReceivePubSubActor<IPubSubTopicApi>
             }
         });
 
-        ReceiveAsync<AskForClusterStatsRequest>(async req =>
+        ReceiveAsync<AskForClusterStatsRequest>(async _ =>
         {
             var clusterStats =
                 await _shardRegionProxy.Ask<ClusterShardingStats>(
                     new GetClusterShardingStats(TimeSpan.FromSeconds(5)));
+
+            var mode = await _ingress.Ask<HttpPipelineModeResponse>(HttpPipelineModeRequest.Instance);
 
             var shardDist = new Dictionary<string, int>();
             var shards = 0;
@@ -156,9 +187,12 @@ public sealed class ApiController : ReceivePubSubActor<IPubSubTopicApi>
                 }
             }
 
-            Sender.Tell(new AskForClusterStatsResponse(shards, entities, shardDist));
+            string m = mode.PMode == Mode.Polling ? "Poll" : "Push";
+            Sender.Tell(new AskForClusterStatsResponse(shards, entities, shardDist, m));
         });
 
+        Receive<AskForRaceDataByRegionRequest>(msg =>
+            Context.ActorOf(RegionNotifyOnceSessionActor.Props(Sender, _ingress, _metricsSink, msg.SessionKey)));
     }
 
     public static Props Prop(IActorRef proxyController, IActorRef proxyIngress, IMetricsPublisher sink) => 

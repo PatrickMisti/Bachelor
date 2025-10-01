@@ -6,7 +6,7 @@ public record ClusterSnapshot(
     int Shards,
     int Entities,
     Dictionary<string, int> ShardDistribution,
-    string RebalanceStatus);
+    string PipelineMode);
 
 public record MetricsUpdate(
     double ThroughputPerSec,
@@ -40,6 +40,7 @@ public class MetricsSnapshot
     public int Shards { get; set; } = 0;
     public int Entities { get; set; } = 0;
     public Dictionary<string, int> ShardDist { get; set; } = new();
+    public string PipelineMode { get; set; } = "N/A";
 
     public static void Update(MetricsSnapshot next) => _current = next;
 }

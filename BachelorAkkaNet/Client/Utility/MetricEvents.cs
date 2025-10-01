@@ -1,6 +1,4 @@
-﻿using static Akka.Actor.Status;
-
-namespace Client.Utility;
+﻿namespace Client.Utility;
 
 public interface IMetricsPublisher
 {
@@ -25,6 +23,11 @@ public readonly record struct StreamBatch(int Count, double LatencyMs, bool Succ
 }
 
 public readonly record struct StreamEnded(bool Success) : IMetricEvent
+{
+    public DateTime TimestampUtc { get; init; } = DateTime.UtcNow;
+}
+
+public readonly record struct PipelineMode(string Mode) : IMetricEvent
 {
     public DateTime TimestampUtc { get; init; } = DateTime.UtcNow;
 }

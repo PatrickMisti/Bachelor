@@ -71,7 +71,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
                 Interlocked.Decrement(ref _activeStreams);
                 if (!end.Success) Interlocked.Increment(ref _winErrs);
                 break;
-
+            
             case CustomMetric:
                 // Hier könntest du eine Registry/Gauges pflegen
                 break;
@@ -85,6 +85,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
 
         var msgs = Interlocked.Exchange(ref _winMsgs, 0);
         var errs = Interlocked.Exchange(ref _winErrs, 0);
+
         var tps = msgs / seconds;
 
         _lat.Sort();
@@ -92,6 +93,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
             _lat.Count == 0 ? 0 :
                 _lat[(int)Math.Clamp(Math.Round((_lat.Count - 1) * p), 0, _lat.Count - 1)];
 
+        
         var update = new MetricsUpdate(
             ThroughputPerSec: tps,
             Latencies: _lat.ToArray(),
@@ -106,10 +108,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
         _windowStart = now;
     }
 
-    public void Publish(IMetricEvent ev)
-    {
-        _channel.Writer.TryWrite(ev);
-    }
+    public void Publish(IMetricEvent ev) => _channel.Writer.TryWrite(ev);
 
     public void Dispose()
     {

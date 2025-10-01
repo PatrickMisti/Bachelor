@@ -59,6 +59,7 @@ internal class ScreenView(BenchmarkTui tui)
         t.AddRow("Nodes", m.Nodes.ToString());
         t.AddRow("Shards", m.Shards.ToString());
         t.AddRow("Entities", m.Entities.ToString("N0"));
+        t.AddRow("PipeLineMode", m.PipelineMode);
         if (m.ShardDist.Count > 0)
         {
             var dist = string.Join(" ", m.ShardDist.Select(kv => $"[blue]{kv.Key}[/]:{kv.Value}"));
@@ -99,7 +100,7 @@ internal class ScreenView(BenchmarkTui tui)
         grid.AddRow(
             "[[F5]] Connection", 
             "[[F6]] Measure [[\u2191|\u2193]] Change Race",
-            "[[S]] Start"
+            "[[S]] Start [[D]] WithRegion"
         );
         return new Panel(grid).Header("Controls", Justify.Left);
     }

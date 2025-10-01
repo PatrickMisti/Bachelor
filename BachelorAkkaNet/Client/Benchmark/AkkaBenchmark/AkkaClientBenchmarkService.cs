@@ -64,11 +64,13 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
     {
         var result = await _apiController.Ask<AskForNodesInClusterResponse>(AskForNodesInClusterRequest.Instance);
         var nodes = result.Nodes;
+        var metric = MetricsSnapshot.Current;
+
         _logger.Debug("Connected to cluster with {0} nodes", nodes);
 
         const string typeName = "driver";
 
-        AskForClusterStatsResponse statsResp;
+        AskForClusterStatsResponse? statsResp;
         try
         {
             statsResp = await _apiController.Ask<AskForClusterStatsResponse>(
@@ -78,16 +80,21 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
         catch (AskTimeoutException)
         {
             // Fallback, wenn die Region (noch) nicht erreichbar ist
-            statsResp = new AskForClusterStatsResponse(0, 0, new Dictionary<string, int>());
+            statsResp = new AskForClusterStatsResponse(0, 0, new Dictionary<string, int>(), "N/A");
             _logger.Warning("Could not grab data from shard!");
         }
+
+        statsResp ??=
+            new AskForClusterStatsResponse(metric.Shards, metric.Entities, metric.ShardDist, metric.PipelineMode);
+
 
         ClusterNodes?.Invoke(new MetricsSnapshot
         {
             Nodes = nodes,
             Shards = statsResp.Shards,
             Entities = statsResp.Entities,
-            ShardDist = statsResp.ShardDistribution
+            ShardDist = statsResp.ShardDistribution,
+            PipelineMode = statsResp.Pipeline
         });
     }
 
@@ -97,6 +104,17 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
 
         _logger.Info("Start session {0} for measuring", sessionKey);
         _apiController.Tell(new AskForRaceDataMessage(sessionKey));
+
+        return Task.CompletedTask;
+    }
+
+    public Task StartSelectedRaceByRegion(RaceSession race)
+    {
+        var sessionKey = race.SessionKey;
+
+        _logger.Info("Start session {0} for measuring by region", sessionKey);
+        _apiController.Tell(new AskForRaceDataByRegionRequest(sessionKey));
+        _ = CheckConnectionsAsync();
 
         return Task.CompletedTask;
     }

@@ -12,4 +12,5 @@ public interface IBenchmarkService
     Task CheckConnectionsAsync();
     void Stop();
     Task StartSelectedRace(RaceSession race);
+    Task StartSelectedRaceByRegion(RaceSession race);
 }
