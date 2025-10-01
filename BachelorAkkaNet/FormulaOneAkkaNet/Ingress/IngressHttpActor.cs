@@ -3,8 +3,10 @@ using Akka.Event;
 using Akka.Hosting;
 using Akka.Streams;
 using Akka.Streams.Dsl;
+using FormulaOneAkkaNet.Ingress.Messages;
 using Infrastructure.General;
 using Infrastructure.Http;
+using Infrastructure.PubSub.Messages;
 using Infrastructure.ShardRegion;
 
 namespace FormulaOneAkkaNet.Ingress;
@@ -22,6 +24,8 @@ public class IngressHttpActor : ReceiveActor
 
         ReceiveAsync<HttpGetRaceSessionsRequest>(HandleGetRaceSessions);
         ReceiveAsync<HttpStartRaceSessionRequest>(HandleStartRaceSession);
+        Receive<HttpStartRaceSessionWithRegionMessage>(HandleStartRaceWithRegion);
+        ReceiveAsync<HttpPipelineModeRequest>(HandlePipelineMode);
     }
 
     private async Task HandleGetRaceSessions(HttpGetRaceSessionsRequest msg)
@@ -61,12 +65,12 @@ public class IngressHttpActor : ReceiveActor
             var telemetry = await _http.GetIntervalDriversAsync(sessionKey);
             var position = await _http.GetPositionsOnTrackAsync(sessionKey);
 
-            
+
             IReadOnlyList<IHasDriverId> data =
             [
                 .. drivers?.Select(x => x.ToMap()) ?? Enumerable.Empty<IHasDriverId>(),
                 .. telemetry?.Select(x => x.ToMap()) ?? Enumerable.Empty<IHasDriverId>(),
-                .. position?.Select(x => x.ToMap())  ?? Enumerable.Empty<IHasDriverId>()
+                .. position?.Select(x => x.ToMap()) ?? Enumerable.Empty<IHasDriverId>()
             ];
 
             if (data.Count == 0)
@@ -80,7 +84,7 @@ public class IngressHttpActor : ReceiveActor
 
             var src = Source.From(data).Grouped(200);
 
-            var srcRef = await src.RunWith(StreamRefs.SourceRef<IEnumerable<IHasDriverId>>(),Context.Materializer());
+            var srcRef = await src.RunWith(StreamRefs.SourceRef<IEnumerable<IHasDriverId>>(), Context.Materializer());
 
             Sender.Tell(new HttpStartRaceSessionResponse(srcRef));
         }
@@ -89,5 +93,21 @@ public class IngressHttpActor : ReceiveActor
             _log.Warning($"Error throw in http {ex.Message}");
             Sender.Tell(new HttpGetRaceSessionsResponse($"Error: {ex.Message}"));
         }
+    }
+
+    private void HandleStartRaceWithRegion(HttpStartRaceSessionWithRegionMessage msg)
+    {
+        _log.Debug("Start msg with region");
+
+        _controller.Tell(new IngressSessionRaceMessage(msg.SessionKey));
+    }
+
+    private async Task HandlePipelineMode(HttpPipelineModeRequest msg)
+    {
+        _log.Debug("Request mode of pipeline");
+
+        var res = await _controller.Ask<PipelineModeResponse>(PipelineModeRequest.Instance);
+
+        Sender.Tell(new HttpPipelineModeResponse(res.PipelineMode));
     }
 }

@@ -3,7 +3,6 @@ using Akka.Actor;
 using Akka.Event;
 using Akka.Streams;
 using Akka.Streams.Dsl;
-using FormulaOneAkkaNet.Ingress.Messages;
 using Infrastructure.General;
 using Infrastructure.Http;
 
@@ -21,7 +20,7 @@ public class IngressPipeline
     private ICancelable? _pollMat;
 
     private bool _running;
-    private Mode _mode = Mode.None;
+    private Mode _mode = Mode.Push;
 
 
     public IngressPipeline(ActorSystem system, IMaterializer mat, IActorRef driverProxy)
@@ -35,6 +34,7 @@ public class IngressPipeline
     public bool IsRunning => _running;
     public bool IsPushMode => _mode == Mode.Push;
     public bool IsPollingMode => _mode == Mode.Polling;
+    public Mode GetMode => _mode;
 
     /// <summary>Start Queue-based push mode.</summary>
     public void StartPush(int workerCount = 4)

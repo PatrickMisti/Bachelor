@@ -5,7 +5,9 @@ using Akka.Hosting;
 using Akka.Persistence;
 using FormulaOneAkkaNet.ShardRegion.Messages;
 using FormulaOneAkkaNet.ShardRegion.Utilities;
+using Infrastructure.PubSub;
 using Infrastructure.ShardRegion;
+using Infrastructure.ShardRegion.Messages;
 
 namespace FormulaOneAkkaNet.ShardRegion;
 
@@ -49,6 +51,7 @@ public class DriverActorPersistent : ReceivePersistentActor
                 {
                     _logger.Error(ex, "Failed to initialize driver with message: {Message}", m);
                     Sender.Tell(new Status.Failure(ex));
+                    Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage(ex.Message));
                 }
             });
         });
@@ -63,6 +66,7 @@ public class DriverActorPersistent : ReceivePersistentActor
 
             Sender.Tell(new NotInitializedMessage(entityId));
             Context.Parent.Tell(new Passivate(new StopEntity()));
+            Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage("DriverActor was not init"));
         });
 
         
@@ -143,7 +147,12 @@ public class DriverActorPersistent : ReceivePersistentActor
         });*/
 
         Command<SaveSnapshotSuccess>(_ => _logger.Debug("Snapshot saved at seqNr {0}", _.Metadata.SequenceNr));
-        Command<SaveSnapshotFailure>(_ => _logger.Warning("Snapshot failed at seqNr {0}", _.Metadata.SequenceNr));
+
+        Command<SaveSnapshotFailure>(_ =>
+        {
+            _logger.Warning("Snapshot failed at seqNr {0}", _.Metadata.SequenceNr);
+            Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage($"Snapshot failed at seqNr {_.Metadata.SequenceNr}"));
+        });
 
         Command<StopEntity>(_ => Context.Stop(Self));
     }
@@ -154,7 +163,9 @@ public class DriverActorPersistent : ReceivePersistentActor
         {
             Sender.Tell(
                 new Status.Failure(
-                    new DriverInShardNotFoundException(element.Key, $"Key is not {_state.Key}")));
+                    new DriverInShardNotFoundException(element.Key, $"Key is not {_state.Key} or initialized")));
+
+            Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage($"Key is not {_state.Key} or initialized"));
             return;
         }
 
@@ -173,6 +184,7 @@ public class DriverActorPersistent : ReceivePersistentActor
         Sender.Tell(
             new Status.Failure(
                 new DriverInShardNotFoundException(key, $"Key is not {_state.Key}")));
+        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage($"Key is not {_state.Key}"));
         return false;
     }
 
@@ -182,9 +194,9 @@ public class DriverActorPersistent : ReceivePersistentActor
 
     private void CreateSnapshot()
     {
-        if (LastSequenceNr % 1 == 0)
+        if (LastSequenceNr % 10 == 0)
         {
-            _logger.Info("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
+            _logger.Debug("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
             SaveSnapshot(_state.CopyState());
         }
             

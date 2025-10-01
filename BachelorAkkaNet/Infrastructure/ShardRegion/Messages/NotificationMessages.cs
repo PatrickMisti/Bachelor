@@ -20,3 +20,5 @@ public record NotifyDriverStateMessage : IPubMessage
         return $"NotifyDriverStateMessage: DriverId={Key}";
     }
 }
+
+public record NotifyStatusFailureMessage(string ErrorMessage) : IPubMessage;

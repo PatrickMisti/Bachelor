@@ -5,6 +5,8 @@ using Infrastructure.ShardRegion;
 using Akka.Cluster.Sharding;
 using FormulaOneAkkaNet.ShardRegion.Messages;
 using FormulaOneAkkaNet.ShardRegion.Utilities;
+using Infrastructure.PubSub;
+using Infrastructure.ShardRegion.Messages;
 
 namespace FormulaOneAkkaNet.ShardRegion;
 
@@ -55,6 +57,7 @@ public class DriverActor : ReceiveActor
 
             Sender.Tell(new NotInitializedMessage(entityId));
             Context.Parent.Tell(new Passivate(new StopEntity()));
+            Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage("DriverActor was not init"));
         });
     }
 
@@ -132,6 +135,8 @@ public class DriverActor : ReceiveActor
         Sender.Tell(new Status.Failure(
             new DriverInShardNotFoundException(key, $"Key is not {_state.Key}")
         ));
+
+        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage($"Key is not {_state.Key}"));
         return false;
     }
 

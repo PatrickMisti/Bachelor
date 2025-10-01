@@ -17,6 +17,7 @@ public enum SessionTypes
     Race
 }
 
+public enum Mode { None, Push, Polling }
 public static class ClusterMemberExtension
 {
     public static string ToStr(this ClusterMemberRoles m) => m switch

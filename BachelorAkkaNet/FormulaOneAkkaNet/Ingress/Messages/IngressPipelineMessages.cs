@@ -1,4 +1,6 @@
-﻿namespace FormulaOneAkkaNet.Ingress.Messages;
+﻿using Infrastructure.General;
+
+namespace FormulaOneAkkaNet.Ingress.Messages;
 
 /// <summary>
 /// to switch between push and polling mode
@@ -25,4 +27,9 @@ public sealed record StopPipeline
     private StopPipeline() { }
 }
 
-public enum Mode { None, Push, Polling }
+public sealed record PipelineModeRequest()
+{
+    public static PipelineModeRequest Instance => new();
+}
+
+public sealed record PipelineModeResponse(Mode PipelineMode);

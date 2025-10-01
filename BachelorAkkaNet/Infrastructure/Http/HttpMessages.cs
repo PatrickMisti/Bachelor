@@ -51,3 +51,12 @@ public record HttpStartRaceSessionResponse
         ErrorMessage = errorMessage;
     }
 }
+
+public record HttpStartRaceSessionWithRegionMessage(int SessionKey);
+
+public record HttpPipelineModeRequest()
+{
+    public static HttpPipelineModeRequest Instance => new();
+}
+
+public record HttpPipelineModeResponse(Mode PMode);

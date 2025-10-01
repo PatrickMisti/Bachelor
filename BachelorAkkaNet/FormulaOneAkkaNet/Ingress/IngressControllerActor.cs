@@ -4,6 +4,7 @@ using Akka.Hosting;
 using Akka.Streams;
 using FormulaOneAkkaNet.Ingress.Messages;
 using Infrastructure;
+using Infrastructure.General;
 using Infrastructure.Http;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
@@ -39,7 +40,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             string test = msg.IsOnline ? "online" : "offline";
             _log.Info($"Got notification to shard region {test} from controller!");
             if (msg.IsOnline && !_pipeline.IsRunning)
-                _pipeline.StartPush(workerCount: 4);
+                StartPipelineWithMode(worker: _workerCount);
         });
 
         ReceiveAsync<ShardConnectionAvailableRequest>(async _ =>
@@ -49,7 +50,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             Sender.Tell(new ShardConnectionAvailableResponse(res.ShardAvailable));
 
             if (res.ShardAvailable && !_pipeline.IsRunning)
-                _pipeline.StartPush(workerCount: 4);
+                StartPipelineWithMode(_workerCount);
         });
 
         ReceiveAsync<IOpenF1Dto>(async dto =>
@@ -89,7 +90,29 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             _log.Debug("Got request to stop ingress stream.");
             _pipeline.Stop();
         });
+
+        Receive<PipelineModeRequest>(_ =>
+        {
+            _log.Debug($"Ask for mode: {_pipeline.GetMode}");
+            Sender.Tell(new PipelineModeResponse(_pipeline.GetMode));
+
+            if (!_pipeline.IsRunning)
+                Sender.Tell(ShardConnectionAvailableRequest.Instance);
+        });
     }
+
+    private void StartPipelineWithMode(int worker)
+    {
+        if (_pipeline.IsPushMode)
+        {
+            _pipeline.StartPush(worker);
+            return;
+        }
+
+        var pollClient = _sp.GetRequiredService<IHttpWrapperClient>();
+        _pipeline.StartPolling(pollClient, TimeSpan.FromSeconds(4), worker);
+    }
+        
 
     private async Task StartPushStreamClient(int sessionKey)
     {
