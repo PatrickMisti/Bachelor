@@ -33,3 +33,7 @@ public sealed record PipelineModeRequest()
 }
 
 public sealed record PipelineModeResponse(Mode PipelineMode);
+
+public sealed record PipelineModeChangeRequest(Mode NewPipelineMode);
+
+public sealed record PipelineModeChangeResponse(Mode PipelineMode);

@@ -60,3 +60,9 @@ public record HttpPipelineModeRequest()
 }
 
 public record HttpPipelineModeResponse(Mode PMode);
+
+public record HttpPipelineModeChangeRequest();
+
+public record HttpPipelineModeChangeResponse(Mode CurrentMode);
+
+public record HttpKillPipeline;

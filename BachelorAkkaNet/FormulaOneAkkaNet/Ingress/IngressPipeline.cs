@@ -19,6 +19,8 @@ public class IngressPipeline
     private IKillSwitch? _kill;
     private ICancelable? _pollMat;
 
+    private List<IActorRef> _workers = new();
+
     private bool _running;
     private Mode _mode = Mode.Push;
 
@@ -35,6 +37,7 @@ public class IngressPipeline
     public bool IsPushMode => _mode == Mode.Push;
     public bool IsPollingMode => _mode == Mode.Polling;
     public Mode GetMode => _mode;
+    public void ChangeMode(Mode mode) => _mode = mode;
 
     /// <summary>Start Queue-based push mode.</summary>
     public void StartPush(int workerCount = 4)
@@ -186,8 +189,12 @@ public class IngressPipeline
         _pollMat?.Cancel();
         _pollMat = null;
 
+        foreach (var w in _workers)
+            _system.Stop(w);
+        _workers.Clear();
+
         _running = false;
-        _mode = Mode.None;
+        //_mode = Mode.None;
     }
 
     private List<IActorRef> SpawnWorkers(int workerCount)
@@ -196,8 +203,10 @@ public class IngressPipeline
         for (var i = 0; i < workerCount; i++)
             list.Add(_system.ActorOf(
                 IngressWorkerActor.Prop(_driverProxy),
-                $"ingress-worker-{i + 1}"));
-        
+                $"ingress-worker-{i + 1}-{Guid.NewGuid()}"));
+
+        _workers = list;
+
         return list;
     }
 }

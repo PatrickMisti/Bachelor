@@ -61,7 +61,12 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         });
 
         ReceiveAsync<IngressSessionRaceMessage>(async msg =>
-            await StartPushStreamClient(msg.SessionKey));
+        {
+            if (_pipeline.IsPushMode)
+                await StartPushStreamClient(msg.SessionKey);
+            else
+                StartPipelineWithMode(_workerCount, msg.SessionKey);
+        });
 
         HandleIngressPipeline();
 
@@ -99,9 +104,19 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             if (!_pipeline.IsRunning)
                 Sender.Tell(ShardConnectionAvailableRequest.Instance);
         });
+
+        Receive<PipelineModeChangeRequest>(msg =>
+        {
+            _log.Debug("Change mode of pipeline");
+            var before = _pipeline.GetMode;
+            Self.Tell(StopPipeline.Instance);
+            _pipeline.ChangeMode(msg.NewPipelineMode);
+            _log.Info($"Changed Mode from input {msg.NewPipelineMode} from {before} to {_pipeline.GetMode}!");
+            Sender.Tell(new PipelineModeChangeResponse(_pipeline.GetMode));
+        });
     }
 
-    private void StartPipelineWithMode(int worker)
+    private void StartPipelineWithMode(int worker, int? sessionKey = null)
     {
         if (_pipeline.IsPushMode)
         {
@@ -110,7 +125,10 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         }
 
         var pollClient = _sp.GetRequiredService<IHttpWrapperClient>();
-        _pipeline.StartPolling(pollClient, TimeSpan.FromSeconds(4), worker);
+        if (sessionKey is not null)
+            _pipeline.StartPolling(pollClient, TimeSpan.FromSeconds(4), (int)sessionKey, worker);
+        else
+            Self.Tell(new PipelineModeChangeRequest(Mode.Polling));
     }
         
 

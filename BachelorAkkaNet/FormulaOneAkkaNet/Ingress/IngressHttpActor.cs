@@ -26,6 +26,8 @@ public class IngressHttpActor : ReceiveActor
         ReceiveAsync<HttpStartRaceSessionRequest>(HandleStartRaceSession);
         Receive<HttpStartRaceSessionWithRegionMessage>(HandleStartRaceWithRegion);
         ReceiveAsync<HttpPipelineModeRequest>(HandlePipelineMode);
+        ReceiveAsync<HttpPipelineModeChangeRequest>(HandlePipelineChange);
+        Receive<HttpKillPipeline>(HandleKillPipeline);
     }
 
     private async Task HandleGetRaceSessions(HttpGetRaceSessionsRequest msg)
@@ -109,5 +111,22 @@ public class IngressHttpActor : ReceiveActor
         var res = await _controller.Ask<PipelineModeResponse>(PipelineModeRequest.Instance);
 
         Sender.Tell(new HttpPipelineModeResponse(res.PipelineMode));
+    }
+
+    private async Task HandlePipelineChange(HttpPipelineModeChangeRequest msg)
+    {
+        _log.Debug("Change Mode of Pipeline");
+
+        var mode = await _controller.Ask<PipelineModeResponse>(PipelineModeRequest.Instance);
+
+        var res = await _controller.Ask<PipelineModeChangeResponse>(new PipelineModeChangeRequest(mode.PipelineMode == Mode.Polling ? Mode.Push : Mode.Polling));
+
+        Sender.Tell(new HttpPipelineModeChangeResponse(res.PipelineMode));
+    }
+
+    private void HandleKillPipeline(HttpKillPipeline msg)
+    {
+        _log.Debug("Kill Pipeline");
+        _controller.Tell(StopPipeline.Instance);
     }
 }
