@@ -38,6 +38,21 @@ public class HttpOpenF1Client(HttpClient http, ILogger<HttpOpenF1Client> logger)
         return JsonSerializer.Deserialize<List<IntervalDriverDto>>(json, _options);
     }
 
+    public async Task<IReadOnlyList<IntervalDriverDto>?> GetFirstIntervalDriversAsync(int sessionKey, CancellationToken? cancellationToken)
+    {
+        var url = $"/v1/intervals/first?session_key={sessionKey}&interval=0";
+        var json = await GetStringAsync(url, cancellationToken ?? CancellationToken.None);
+        return JsonSerializer.Deserialize<List<IntervalDriverDto>>(json, _options);
+    }
+
+    public async Task<IReadOnlyList<IntervalDriverDto>?> GetIntervalDriversByDateAsync(int sessionKey, DateTimeOffset from, DateTimeOffset to, CancellationToken? cancellationToken)
+    {
+        var url = $"/v1/intervals/by_date?session_key={sessionKey}&date={from}&date={to}";
+        var json = await GetStringAsync(url, cancellationToken ?? CancellationToken.None);
+        return JsonSerializer.Deserialize<List<IntervalDriverDto>>(json, _options);
+    }
+
+
     public async Task<IReadOnlyList<IOpenF1Dto>?> FetchNextBatch(int sessionKey, CancellationToken? cancellationToken)
     {
         try

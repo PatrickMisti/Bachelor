@@ -6,12 +6,17 @@ namespace Infrastructure.Http;
 
 public interface IOpenF1Dto;
 
+public interface IOpenF1DtoWithDate: IOpenF1Dto
+{
+    DateTimeOffset CurrentDateTime { get; }
+}
+
 public sealed record IntervalDriverDto(
     [property: JsonPropertyName(name: "session_key")] int SessionKey,
     [property: JsonPropertyName(name: "driver_number")] int DriverNumber,
     [property: JsonPropertyName(name: "interval")][property: JsonConverter(typeof(LenientDoubleConverter))] double? Interval,
     [property: JsonPropertyName(name: "gap_to_leader")][property: JsonConverter(typeof(LenientDoubleConverter))] double? GapToLeader,
-    [property: JsonPropertyName(name: "date")] DateTimeOffset CurrentDateTime) : IOpenF1Dto;
+    [property: JsonPropertyName(name: "date")] DateTimeOffset CurrentDateTime) : IOpenF1DtoWithDate;
 
 public sealed record PersonalDriverDataDto(
     [property: JsonPropertyName(name: "session_key")] int SessionKey,
@@ -26,7 +31,7 @@ public sealed record PositionOnTrackDto(
     [property: JsonPropertyName(name: "session_key")] int SessionKey,
     [property: JsonPropertyName(name: "driver_number")] int DriverNumber,
     [property: JsonPropertyName(name: "position")] int PositionOnTrack,
-    [property: JsonPropertyName("date")] DateTimeOffset CurrentDateTime) : IOpenF1Dto;
+    [property: JsonPropertyName("date")] DateTimeOffset CurrentDateTime) : IOpenF1DtoWithDate;
 
 public sealed record TelemetryDateDto(
     [property: JsonPropertyName(name: "session_key")] int SessionKey,

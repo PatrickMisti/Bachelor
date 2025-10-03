@@ -95,31 +95,58 @@ public class IngressPipeline
     public void StartPolling(IHttpWrapperClient pollClient, int sessionKey, int workerCount = 4)
     {
         StopInternal();
-
         var workers = SpawnWorkers(workerCount);
 
+        // Polling Simulation
+        var preloadTask = Task.Run(async () =>
+        {
+            var positionsTask = pollClient.GetPositionsOnTrackAsync(sessionKey);
+            var intervalsTask = pollClient.GetIntervalDriversAsync(sessionKey);
+
+            await Task.WhenAll(positionsTask, intervalsTask).ConfigureAwait(false);
+
+            var positions = positionsTask.Result ?? Array.Empty<PositionOnTrackDto>();
+            var intervals = intervalsTask.Result ?? Array.Empty<IntervalDriverDto>();
+
+            var combined = new List<IOpenF1DtoWithDate>(positions.Count + intervals.Count);
+            combined.AddRange(positions);
+            combined.AddRange(intervals);
+
+            combined.Sort(static (a, b) => a.CurrentDateTime.CompareTo(b.CurrentDateTime));
+            return combined;
+        });
+
+        var preload = Source.FromTask(preloadTask);
+
+        var tick = TimeSpan.FromMilliseconds(100);
+        var batchSize = 3;
+
+        var preloadedTickSource = preload.ConcatMany(list =>
+        {
+            return Source
+                .Tick(TimeSpan.Zero, tick, NotUsed.Instance)
+                .StatefulSelectMany<NotUsed, IOpenF1Dto, ICancelable>(() =>
+                {
+                    var index = 0;
+                    return _ =>
+                    {
+                        if (index >= list.Count) return Enumerable.Empty<IOpenF1Dto>();
+
+                        var end = Math.Min(index + batchSize, list.Count);
+                        var slice = list.Skip(index).Take(end - index);
+                        index = end;
+                        return slice.Select(x => (IOpenF1Dto)x);
+                    };
+                }).MapMaterializedValue(_ => NotUsed.Instance);
+        });
+
         // Polling source materializes ICancelable (the Tick), we don't really need to keep it
-        var pollingSource =
-            Source.Tick(TimeSpan.Zero, TimeSpan.FromSeconds(1), NotUsed.Instance)
-                  .SelectAsync(1, async _ =>
-                  {
-                      var batch = await pollClient.FetchNextBatch(sessionKey, CancellationToken.None).ConfigureAwait(false);
-                      return batch ?? Array.Empty<IOpenF1Dto>();
-                  })
-                  .SelectMany(batch => batch);
 
         var kill = KillSwitches.Single<IOpenF1Dto>();
 
         // Combine mats, but only keep the IKillSwitch as our materialized value (ignore ICancelable)
-        var graph = GraphDsl.Create<
-            ClosedShape,
-            IKillSwitch,
-            ICancelable,
-            IKillSwitch,
-            SourceShape<IOpenF1Dto>,
-            FlowShape<IOpenF1Dto, IOpenF1Dto>
-        >(
-            pollingSource,
+        var graph = GraphDsl.Create(
+            preloadedTickSource,
             kill,
             combineMaterializers: (_, ks) => ks,
             buildBlock: (builder, src, ks) =>
@@ -130,6 +157,8 @@ public class IngressPipeline
 
                 for (int i = 0; i < workers.Count; i++)
                 {
+                    
+
                     var sink = Sink.ActorRefWithAck<IOpenF1Dto>(
                         workers[i],
                         onInitMessage: StreamInit.Instance,
