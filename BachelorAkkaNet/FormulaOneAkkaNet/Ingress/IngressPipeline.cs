@@ -17,7 +17,6 @@ public class IngressPipeline
 
     private ISourceQueueWithComplete<IOpenF1Dto>? _queue;
     private IKillSwitch? _kill;
-    private ICancelable? _pollMat;
 
     private List<IActorRef> _workers = new();
 
@@ -97,54 +96,58 @@ public class IngressPipeline
         StopInternal();
         var workers = SpawnWorkers(workerCount);
 
-        // Polling Simulation
+        // Polling Simulation - preload and then replay at a fixed cadence
         var preloadTask = Task.Run(async () =>
         {
-            var positionsTask = pollClient.GetPositionsOnTrackAsync(sessionKey);
-            var intervalsTask = pollClient.GetIntervalDriversAsync(sessionKey);
+            try
+            {
+                var positionsTask = pollClient.GetPositionsOnTrackAsync(sessionKey);
+                var intervalsTask = pollClient.GetIntervalDriversAsync(sessionKey);
 
-            await Task.WhenAll(positionsTask, intervalsTask).ConfigureAwait(false);
+                await Task.WhenAll(positionsTask, intervalsTask).ConfigureAwait(false);
 
-            var positions = positionsTask.Result ?? Array.Empty<PositionOnTrackDto>();
-            var intervals = intervalsTask.Result ?? Array.Empty<IntervalDriverDto>();
+                var positions = positionsTask.Result ?? Array.Empty<PositionOnTrackDto>();
+                var intervals = intervalsTask.Result ?? Array.Empty<IntervalDriverDto>();
 
-            var combined = new List<IOpenF1DtoWithDate>(positions.Count + intervals.Count);
-            combined.AddRange(positions);
-            combined.AddRange(intervals);
+                var combined = new List<IOpenF1DtoWithDate>(positions.Count + intervals.Count);
+                combined.AddRange(positions);
+                combined.AddRange(intervals);
 
-            combined.Sort(static (a, b) => a.CurrentDateTime.CompareTo(b.CurrentDateTime));
-            return combined;
+                combined.Sort(static (a, b) => a.CurrentDateTime.CompareTo(b.CurrentDateTime));
+                return combined;
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Preload failed for session {0}", sessionKey);
+                return new List<IOpenF1DtoWithDate>(0);
+            }
         });
 
         var preload = Source.FromTask(preloadTask);
 
-        var tick = TimeSpan.FromMilliseconds(100);
-        var batchSize = 3;
+        // Socket simulation
+        var tick = TimeSpan.FromMilliseconds(50);
+        var batchSize = 20;
 
+        bool withBatching = false;
+
+        // Emit in batches on a fixed cadence and complete after the list is exhausted
         var preloadedTickSource = preload.ConcatMany(list =>
-        {
-            return Source
-                .Tick(TimeSpan.Zero, tick, NotUsed.Instance)
-                .StatefulSelectMany<NotUsed, IOpenF1Dto, ICancelable>(() =>
-                {
-                    var index = 0;
-                    return _ =>
-                    {
-                        if (index >= list.Count) return Enumerable.Empty<IOpenF1Dto>();
+            withBatching
+                ? Source.From(list)
+                    .Grouped(batchSize)
+                    .Throttle(1, tick, 1, ThrottleMode.Shaping)
+                    .SelectMany(batch => batch.Select(x => (IOpenF1Dto)x))
+                    .MapMaterializedValue(_ => NotUsed.Instance)
+                : Source.From(list)
+                    .Select(x => (IOpenF1Dto)x)
+                    .MapMaterializedValue(_ => NotUsed.Instance)
+        );
 
-                        var end = Math.Min(index + batchSize, list.Count);
-                        var slice = list.Skip(index).Take(end - index);
-                        index = end;
-                        return slice.Select(x => (IOpenF1Dto)x);
-                    };
-                }).MapMaterializedValue(_ => NotUsed.Instance);
-        });
-
-        // Polling source materializes ICancelable (the Tick), we don't really need to keep it
-
+        // Polling source materializes NotUsed; we only keep the kill switch
         var kill = KillSwitches.Single<IOpenF1Dto>();
 
-        // Combine mats, but only keep the IKillSwitch as our materialized value (ignore ICancelable)
+        // Combine mats, but only keep the IKillSwitch as our materialized value
         var graph = GraphDsl.Create(
             preloadedTickSource,
             kill,
@@ -157,8 +160,6 @@ public class IngressPipeline
 
                 for (int i = 0; i < workers.Count; i++)
                 {
-                    
-
                     var sink = Sink.ActorRefWithAck<IOpenF1Dto>(
                         workers[i],
                         onInitMessage: StreamInit.Instance,
@@ -174,7 +175,7 @@ public class IngressPipeline
         _kill = RunnableGraph.FromGraph(graph).Run(_mat);
         _mode = Mode.Polling;
         _running = true;
-        _log.Info("IngressPipeline started in POLLING mode every {0} with {1} workers.", workerCount);
+        _log.Info("IngressPipeline started in POLLING mode every {0} with {1} workers.", tick, workerCount);
     }
 
     public async Task<bool> OfferAsync(IOpenF1Dto dto)
@@ -197,7 +198,14 @@ public class IngressPipeline
         if (_mode != Mode.Push || _queue is null) return;
 
         foreach (var dto in list)
-            await _queue.OfferAsync(dto).ConfigureAwait(false);
+        {
+            var result = await _queue.OfferAsync(dto).ConfigureAwait(false);
+            if (result is not QueueOfferResult.Enqueued)
+            {
+                _log.Warning("Offer result was {0}. Stopping batch enqueue.", result);
+                if (result is QueueOfferResult.QueueClosed or QueueOfferResult.Failure) break;
+            }
+        }
     }
     public void Stop()
     {
@@ -214,9 +222,6 @@ public class IngressPipeline
 
         _kill?.Shutdown();
         _kill = null;
-
-        _pollMat?.Cancel();
-        _pollMat = null;
 
         foreach (var w in _workers)
             _system.Stop(w);

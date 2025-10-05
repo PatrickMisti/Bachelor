@@ -85,9 +85,11 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
 
         Receive<UsePollingStream>(m =>
         {
-            _log.Debug("Start polling stream pipeline ingress");
-            var pollClient = _sp.GetRequiredService<IHttpWrapperClient>();
-            //_pipeline.StartPolling(pollClient,  _workerCount);
+            _log.Debug("Switch to polling stream pipeline ingress");
+            // Set mode to Polling, wait for session key, then actually start
+            _pipeline.ChangeMode(Mode.Polling);
+            if (_pipeline.IsRunning)
+                _pipeline.Stop();
         });
 
         Receive<StopPipeline>(_ =>
@@ -102,16 +104,16 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             Sender.Tell(new PipelineModeResponse(_pipeline.GetMode));
 
             if (!_pipeline.IsRunning)
-                Sender.Tell(ShardConnectionAvailableRequest.Instance);
+                Self.Tell(ShardConnectionAvailableRequest.Instance);
         });
 
         Receive<PipelineModeChangeRequest>(msg =>
         {
             _log.Debug("Change mode of pipeline");
             var before = _pipeline.GetMode;
-            Self.Tell(StopPipeline.Instance);
+            _pipeline.Stop();
             _pipeline.ChangeMode(msg.NewPipelineMode);
-            _log.Info($"Changed Mode from input {msg.NewPipelineMode} from {before} to {_pipeline.GetMode}!");
+            _log.Info($"Changed Mode from {before} to {_pipeline.GetMode}!");
             Sender.Tell(new PipelineModeChangeResponse(_pipeline.GetMode));
         });
     }
@@ -128,19 +130,18 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         if (sessionKey is not null)
             _pipeline.StartPolling(pollClient, (int)sessionKey, worker);
         else
-            Self.Tell(new PipelineModeChangeRequest(Mode.Polling));
+            _log.Info("Polling mode requested but no sessionKey available yet. Waiting for session message...");
     }
 
     private async Task StartPushStreamClient(int sessionKey)
     {
-        var http = _sp.GetRequiredService<IHttpWrapperClient>();
-        var list = await http.FetchNextBatch(sessionKey, CancellationToken.None);
-
-        if (_pipeline is { IsPushMode: false, IsRunning: false } /*|| list is null*/)
+        if (!_pipeline.IsPushMode || !_pipeline.IsRunning)
         {
             _log.Info("Pipeline ist not online or in false mode!");
             return;
         }
+
+        var http = _sp.GetRequiredService<IHttpWrapperClient>();
 
         // fire and forget
         var driver = await http.GetDriversAsync(sessionKey, CancellationToken.None);
@@ -149,16 +150,23 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         if (driver is null)
         {
             _log.Warning("No drivers received from OpenF1 API for session {0}", sessionKey);
+        }
+        else
+        {
+            await _pipeline.OfferAsync(driver.Cast<IOpenF1Dto>().ToList());
+            _log.Info("Sent {0} drivers to pipeline for session {1}", driver.Count, sessionKey);
+        }
+
+        var list = await http.FetchNextBatch(sessionKey, CancellationToken.None);
+        if (list is null || list.Count == 0)
+        {
+            _log.Info("No initial data batch received for session {0}", sessionKey);
             return;
         }
 
-        await _pipeline.OfferAsync(driver.ToList<IOpenF1Dto>());
+        await _pipeline.OfferAsync(list.ToList());
 
-        _log.Info("Sent {0} drivers to pipeline for session {1}", driver.Count, sessionKey);
-
-        await _pipeline.OfferAsync(list!.ToList());
-
-        _log.Info("Sent {0} data points to pipeline for session {1}", list!.Count, sessionKey);
+        _log.Info("Sent {0} data points to pipeline for session {1}", list.Count, sessionKey);
     }
 
     protected override void PostStop()
