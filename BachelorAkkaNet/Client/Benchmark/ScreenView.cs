@@ -54,13 +54,13 @@ internal class ScreenView(BenchmarkTui tui)
 
     private Panel ClusterPanel()
     {
-        var m = MetricsSnapshot.Current;
+        var m = Client.Utility.MetricsSnapshot.Current;
         var t = new Table().NoBorder().AddColumn("Metric").AddColumn("Value");
         t.AddRow("Nodes", m.Nodes.ToString());
         t.AddRow("Shards", m.Shards.ToString());
         t.AddRow("Entities", m.Entities.ToString("N0"));
-        t.AddRow("PipeLineMode", m.PipelineMode);
-        if (m.ShardDist.Count > 0)
+        t.AddRow("PipeLineMode", m.PipelineMode ?? "N/A");
+        if (m.ShardDist != null && m.ShardDist.Count > 0)
         {
             var dist = string.Join(" ", m.ShardDist.Select(kv => $"[blue]{kv.Key}[/]:{kv.Value}"));
             t.AddRow("Distribution", dist);
@@ -78,7 +78,7 @@ internal class ScreenView(BenchmarkTui tui)
         t.AddColumn(new TableColumn("").LeftAligned());
         t.AddColumn(new TableColumn("").LeftAligned());
 
-        if (sessions is null)
+        if (sessions is null || sessions.Count == 0 || sessions.All(x => !x.selected))
         {
             t.AddRow("Location:", "N/A");
             t.AddRow("Country:", "N/A");

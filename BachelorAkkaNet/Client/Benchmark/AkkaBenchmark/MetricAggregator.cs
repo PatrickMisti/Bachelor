@@ -12,13 +12,12 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
 
     
     private readonly List<double> _lat = new(1024);
-    private long _winMsgs, _winErrs, _activeStreams;
+    private long _winMsgs, _winErrs;
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private DateTime _windowStart = DateTime.UtcNow;
 
     public event Action<MetricsUpdate>? OnUpdate;
 
-    private readonly CancellationTokenSource _cts = new();
     private readonly Task _loop;
 
     public MetricAggregator()
@@ -29,21 +28,31 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
     private async Task AggregationLoopAsync()
     {
         var reader = _channel.Reader;
-        var tick = Task.Delay(1000, _cts.Token);
+        var tick = Task.Delay(1000);
 
-        while (!_cts.IsCancellationRequested)
+        while (true)
         {
+            // Drain all available events
             while (reader.TryRead(out var ev)) Consume(ev);
 
+            // Emit once per second
             if (tick.IsCompleted)
             {
                 EmitWindow();
-                tick = Task.Delay(1000, _cts.Token);
+                tick = Task.Delay(1000);
             }
 
-            // kleine Blockade, wenn gerade nichts da ist
+            // If writer is completed and buffer is empty, flush last window and exit
+            if (reader.Completion.IsCompleted && !reader.TryRead(out _))
+            {
+                if (_lat.Count > 0 || Volatile.Read(ref _winMsgs) > 0 || Volatile.Read(ref _winErrs) > 0)
+                    EmitWindow();
+                break;
+            }
+
+            // Wait for either new data or next tick
             if (!reader.TryRead(out _))
-                await Task.WhenAny(reader.WaitToReadAsync(_cts.Token).AsTask(), tick);
+                await Task.WhenAny(reader.WaitToReadAsync().AsTask(), tick);
         }
     }
 
@@ -58,7 +67,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
                 break;
 
             case StreamStarted:
-                Interlocked.Increment(ref _activeStreams);
+                // no-op (kept for potential future gauges)
                 break;
 
             case StreamBatch b:
@@ -68,7 +77,6 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
                 break;
 
             case StreamEnded end:
-                Interlocked.Decrement(ref _activeStreams);
                 if (!end.Success) Interlocked.Increment(ref _winErrs);
                 break;
             
@@ -88,21 +96,23 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
 
         var tps = msgs / seconds;
 
-        _lat.Sort();
-        double P(double p) =>
-            _lat.Count == 0 ? 0 :
-                _lat[(int)Math.Clamp(Math.Round((_lat.Count - 1) * p), 0, _lat.Count - 1)];
-
-        
         var update = new MetricsUpdate(
             ThroughputPerSec: tps,
             Latencies: _lat.ToArray(),
-            ErrorPercent: msgs == 0 ? 0 : (double)errs / msgs,
+            // Emit as percentage (0..100) so the TUI prints correct values like "5.00%"
+            ErrorPercent: msgs == 0 ? 0 : (double)errs / msgs * 100.0,
             Messages: (int)msgs,
             RunningFor: _uptime.Elapsed
         );
 
-        OnUpdate?.Invoke(update);
+        try
+        {
+            OnUpdate?.Invoke(update);
+        }
+        catch
+        {
+            // Avoid subscriber exceptions killing the loop
+        }
 
         _lat.Clear();
         _windowStart = now;
@@ -112,7 +122,8 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
 
     public void Dispose()
     {
-        _cts.Cancel();
+        // Complete the writer so the loop drains remaining events and exits
+        _channel.Writer.TryComplete();
         try
         {
             _loop.Wait();
@@ -121,6 +132,5 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
         {
             // ignored
         }
-        _cts.Dispose();
     }
 }
