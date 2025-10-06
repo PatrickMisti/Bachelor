@@ -41,8 +41,6 @@ public class IngressWorkerActor : ReceiveActor
                 }
 
                 _log.Debug($"Forwarding message {msg.GetType()} to proxy");
-                // an ShardRegion (Proxy) forwarden
-                ;
 
                 // Ack for backpressure
                 Sender.Tell(StreamAck.Instance);

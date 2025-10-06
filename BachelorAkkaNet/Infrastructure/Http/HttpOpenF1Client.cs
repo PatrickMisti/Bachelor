@@ -52,6 +52,13 @@ public class HttpOpenF1Client(HttpClient http, ILogger<HttpOpenF1Client> logger)
         return JsonSerializer.Deserialize<List<IntervalDriverDto>>(json, _options);
     }
 
+    public async Task<IReadOnlyList<TelemetryDateDto>?> GetTelemetryDatesAsync(int sessionKey, int driverNumber, CancellationToken? cancellationToken)
+    {
+        var url = $"/v1/car_data?session_key={sessionKey}&speed>0&driver_number={driverNumber}";
+        var json = await GetStringAsync(url, cancellationToken ?? CancellationToken.None);
+        return JsonSerializer.Deserialize<List<TelemetryDateDto>>(json, _options);
+    }
+
 
     public async Task<IReadOnlyList<IOpenF1Dto>?> FetchNextBatch(int sessionKey, CancellationToken? cancellationToken)
     {

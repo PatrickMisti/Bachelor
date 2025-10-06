@@ -1,5 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Configurations>Debug;Release;Testing</Configurations>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Akka.Cluster.Sharding" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />

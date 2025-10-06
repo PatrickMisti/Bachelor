@@ -167,6 +167,23 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
         await _pipeline.OfferAsync(list.ToList());
 
         _log.Info("Sent {0} data points to pipeline for session {1}", list.Count, sessionKey);
+
+        // Not working to many requests
+        /*var options = new ParallelOptions { MaxDegreeOfParallelism = 1};
+        await Parallel.ForEachAsync(driver!, options, async (dto, token) =>
+        {
+            var l = await http.GetTelemetryDatesAsync(sessionKey, dto.DriverNumber, token);
+            if (l is not null && l.Count > 0)
+                await _pipeline.OfferAsync(l.Cast<IOpenF1Dto>().ToList());
+        });*/
+#if TESTING
+        foreach (var dto in driver!)
+        {
+            var l = await http.GetTelemetryDatesAsync(sessionKey, dto.DriverNumber);
+            if (l is not null && l.Count > 0)
+                await _pipeline.OfferAsync(l.Cast<IOpenF1Dto>().ToList());
+        }
+#endif
     }
 
     protected override void PostStop()

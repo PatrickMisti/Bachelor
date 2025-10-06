@@ -13,4 +13,6 @@ public interface IHttpWrapperClient
     Task<IReadOnlyList<IOpenF1Dto>?> FetchNextBatch(int sessionKey, CancellationToken? cancellationToken = null);
 
     Task<IReadOnlyList<RaceSessionDto>?> GetRaceSessionsAsync(int season, SessionTypes types, CancellationToken? cancellationToken = null);
+
+    Task<IReadOnlyList<TelemetryDateDto>?> GetTelemetryDatesAsync(int sessionKey, int driverNumber, CancellationToken? cancellationToken = null);
 }
