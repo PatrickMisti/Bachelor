@@ -1,10 +1,14 @@
-﻿using Akka.Actor;
+﻿using System.Collections.Concurrent;
+using Akka;
+using Akka.Actor;
 using Akka.Event;
 using Akka.Streams;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Akka.TestKit.Xunit2;
 using Infrastructure.General;
+using Microsoft.VisualStudio.TestPlatform.Common.DataCollection;
+using Tests.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -325,5 +329,43 @@ public class SimpleStreamTests(ITestOutputHelper output) : TestKit(TestConfig, o
         var first = await firstTask;
         Assert.Equal(123, first);
         queue.Complete();
+    }
+
+    [Fact]
+    public async Task Backpressure_vs_Drop_should_show_difference()
+    {
+        var mat = Sys.Materializer();
+        const int total = 5000;
+
+        var bpCount = 0;
+        await Source.Repeat(1)
+            .Take(total)
+            .SelectAsync(8, Task.FromResult)
+            .Buffer(10, OverflowStrategy.Backpressure)
+            .SelectAsync(1, async x =>
+            {
+                await Task.Delay(2);
+                return x;
+            })
+            .ToMaterialized(Sink.ForEach<int>(_ => Interlocked.Increment(ref bpCount)), Keep.Right)
+            .Run(mat);
+
+        var dropCount = 0;
+        await Source.Repeat(1)
+            .Take(total)
+            .SelectAsync(8, Task.FromResult)
+            .Buffer(10, OverflowStrategy.DropNew)
+            .SelectAsync(1, async x =>
+            {
+                await Task.Delay(2);
+                return x;
+            })
+            .ToMaterialized(Sink.ForEach<int>(_ => Interlocked.Increment(ref dropCount)), Keep.Right)
+            .Run(mat);
+
+        Sys.Log.Warning($"Backpressure ={bpCount}, Drop ={dropCount} of {total}");
+
+        Assert.True(bpCount == total, "Backpressure should keep all messages");
+        Assert.True(dropCount < total, "Drop should lose messages");
     }
 }

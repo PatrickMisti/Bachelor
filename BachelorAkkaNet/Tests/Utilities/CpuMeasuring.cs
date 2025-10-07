@@ -44,4 +44,6 @@ internal static class CpuMeasuring
         sw.Stop();
         return sw.Elapsed.TotalMilliseconds;
     }
+
+    public record LatencyThroughputResult(double ListSize, double Rate, double P50, double P95, double P99);
 }

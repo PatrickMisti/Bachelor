@@ -1,8 +1,10 @@
-﻿using Akka.Event;
+﻿using Akka;
+using Akka.Event;
 using Akka.Streams;
 using Akka.Streams.Dsl;
 using Akka.TestKit.Xunit2;
 using Infrastructure.Http;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -252,5 +254,66 @@ public class PerformanceStreamTests(ITestOutputHelper helper) : TestKit(TestConf
 
         await done;
         return underLoad - baseline;
+    }
+
+    [Fact]
+    public async Task Backpressure_vs_Drop_throughput_latency_and_losses()
+    {
+        var mat = Sys.Materializer();
+        const int total = 4000;
+        const int bufferSize = 50;
+        const int workMs = 2;
+
+
+        async Task<CpuMeasuring.LatencyThroughputResult> RunOverflowScenario(OverflowStrategy strategy)
+        {
+            var latencies = new ConcurrentBag<double>();
+            var elements = 0;
+
+            var timeResult = await CpuMeasuring.MeasureLatency(async () =>
+            {
+                await Source.From(Enumerable.Range(0, total))
+                    .Select(_ => DateTime.UtcNow)
+                    .Buffer(bufferSize, strategy)
+                    .SelectAsync(1, async x =>
+                    {
+                        // simulate some processing delay
+                        await Task.Delay(workMs);
+                        var l = (DateTime.UtcNow - x).TotalMilliseconds;
+                        latencies.Add(l);
+                        Interlocked.Increment(ref elements);
+                        return NotUsed.Instance;
+                    })
+                    .RunWith(Sink.Ignore<NotUsed>(), mat);
+            });
+
+            var latSort = latencies.ToList();
+            latSort.Sort();
+
+
+            return new CpuMeasuring.LatencyThroughputResult(
+                ListSize: elements,
+                Rate: elements / (timeResult / 1000.0), // calc rate per second
+                P50: CpuMeasuring.Percentile(latSort, .5),
+                P95: CpuMeasuring.Percentile(latSort, .95),
+                P99: CpuMeasuring.Percentile(latSort, .99));
+        }
+
+        var backpressure = await RunOverflowScenario(OverflowStrategy.Backpressure);
+        var dropNew = await RunOverflowScenario(OverflowStrategy.DropNew);
+        var dropHead = await RunOverflowScenario(OverflowStrategy.DropHead);
+        var dropTail = await RunOverflowScenario(OverflowStrategy.DropTail);
+
+        Sys.Log.Warning("Strategy       | Rate/s | Count | P50 ms | P95 ms | P99 ms");
+        Sys.Log.Warning("---------------|--------|-------|--------|--------|-------");
+        Sys.Log.Warning($"Backpressure   | {backpressure.Rate,6:F1} | {backpressure.ListSize,5} | {backpressure.P50,6:F1} | {backpressure.P95,6:F1} | {backpressure.P99,5:F1}");
+        Sys.Log.Warning($"DropNew        | {dropNew.Rate,6:F1} | {dropNew.ListSize,5} | {dropNew.P50,6:F1} | {dropNew.P95,6:F1} | {dropNew.P99,5:F1}");
+        Sys.Log.Warning($"DropHead       | {dropHead.Rate,6:F1} | {dropHead.ListSize,5} | {dropHead.P50,6:F1} | {dropHead.P95,6:F1} | {dropHead.P99,5:F1}");
+        Sys.Log.Warning($"DropTail       | {dropTail.Rate,6:F1} | {dropTail.ListSize,5} | {dropTail.P50,6:F1} | {dropTail.P95,6:F1} | {dropTail.P99,5:F1}");
+
+        Assert.True(Math.Abs(backpressure.ListSize - total) == 0, "Backpressure should keep all messages");
+        Assert.True(dropNew.ListSize < total, "DropNew should lose messages");
+        Assert.True(dropHead.ListSize < total, "DropHead should lose messages");
+        Assert.True(dropTail.ListSize < total, "DropTail should lose messages");
     }
 }

@@ -1,9 +1,12 @@
-﻿using System.Diagnostics;
-using System.Globalization;
-using Akka.Actor;
+﻿using Akka.Actor;
+using Akka.Cluster.Sharding;
+using Akka.Configuration;
 using Akka.Event;
 using Akka.TestKit.Xunit2;
+using Akka.Util.Internal;
 using Infrastructure.ShardRegion;
+using System.Diagnostics;
+using System.Globalization;
 using Tests.ShardRegion.Assets;
 using Tests.Utilities;
 using Xunit;
@@ -276,5 +279,63 @@ public class PerformanceShardTests(ITestOutputHelper helper) : TestKit(TestConfi
         Logger.Warning(msg);
 
         Assert.True(latencies.Length == attempts);
+    }
+
+    [Fact]
+    public async Task Throughput_should_increase_when_adding_region()
+    {
+        const int entities = 200;
+        const int messagesPerEntity = 200;
+        const int totalMessages = entities * messagesPerEntity;
+
+        var hocon = ConfigurationFactory.ParseString(TestConfig).WithFallback(Sys.Settings.Config);
+        var system2 = ActorSystem.Create(Sys.Name, hocon);
+
+        var keys = Enumerable.Range(1, entities).Select(i => DriverKey.Create(40, i)).ToArray();
+
+        var region1 = await ShardRegionTools.EnsureRegionStarted(Sys);
+
+        foreach (var k in keys)
+            await region1.Ask(new CreateModelDriverMessage(k, "A", "B", "C", "D", "E"));
+
+        async Task<double> RunMessagingToRegion(IActorRef region)
+            => await CpuMeasuring.MeasureLatency(async () =>
+                await Task
+                    .WhenAll(keys
+                        .AsParallel()
+                        .SelectMany(k => Enumerable.Range(0, messagesPerEntity)
+                            .Select(i => region1.Ask<string>(new UpdateTelemetryMessage(k, i, DateTime.UtcNow), TimeSpan.FromSeconds(10)))
+                        )
+                    )
+                );
+
+        // in milliseconds
+        var latency1 = await RunMessagingToRegion(region1);
+
+
+        // start 2nd region in new system
+        var region2 = await ShardRegionTools.EnsureRegionStarted(system2, Akka.Cluster.Cluster.Get(Sys).SelfAddress);
+
+        await AwaitAssertAsync(async () =>
+        {
+            var stats = await region1.Ask<ClusterShardingStats>(new GetClusterShardingStats(TimeSpan.FromSeconds(2)), TimeSpan.FromSeconds(10));
+            Assert.True(stats.Regions.Count >= 2);
+            Assert.True(stats.Regions.Values.Sum(r => r.Stats.Count) >= 1);
+        }, TimeSpan.FromSeconds(30));
+
+
+        var latency2 = await RunMessagingToRegion(region1);
+
+        var rate1 = totalMessages / (latency1 / 1000.0);
+        var rate2 = totalMessages / (latency2 / 1000.0);
+
+        var msg = string.Format(CultureInfo.InvariantCulture,
+            "\n-----------------------------\nThroughput with 1 region: {0:F0} msg/s\n" +
+            "Throughput with 2 regions: {1:F0} msg/s\n",
+            rate1, rate2);
+
+        Logger.Warning(msg);
+
+        Assert.True(rate2 > rate1 * 1.4, $"expected ≥40% gain with 2 nodes, got {rate1:F0}→{rate2:F0} msg/s"); 
     }
 }
