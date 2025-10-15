@@ -1,0 +1,61 @@
+% !TeX program = pdflatex
+\documentclass[a4paper,12pt,oneside]{scrreprt} % KOMA-Script für Abschlussarbeiten
+
+% ====== Pakete ======
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}        % Deutsche Sprache
+\usepackage{csquotes}              % Korrekte Anführungszeichen
+\usepackage{graphicx}              % Bilder einbinden
+\usepackage{float}                 % Genaue Bildpositionierung
+\usepackage{amsmath,amssymb}       % Mathematische Formeln
+\usepackage{hyperref}              % Links und PDF-Metadaten
+\usepackage{geometry}              % Seitenränder
+\usepackage{setspace}              % Zeilenabstand
+\usepackage{booktabs}              % Schönere Tabellen
+\usepackage{caption}               % Bessere Bildunterschriften
+\usepackage{listings}              % Quellcode
+\usepackage{biblatex}              % Literaturverwaltung (modern)
+\addbibresource{bibliography.bib}
+
+% ====== Layout ======
+\geometry{a4paper, left=3cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\setstretch{1.5} % 1.5-zeilig
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=black,
+    pdftitle={Bachelorarbeit},
+    pdfauthor={Dein Name},
+}
+
+% ====== Dokument ======
+\begin{document}
+
+\begin{titlepage}
+\centering
+{\Large Hochschule XYZ \\[1cm]}
+{\Huge \textbf{Titel der Bachelorarbeit}}\\[1cm]
+{\large Bachelorarbeit im Studiengang ...}\\[2cm]
+\textbf{Autor:} Dein Name\\
+\textbf{Matrikelnummer:} 123456\\[0.5cm]
+\textbf{Betreuer:} Prof. Dr. Mustermann\\[2cm]
+\today
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\input{chapters/1_intro.tex}
+\input{chapters/2_basic.tex}
+\input{chapters/3_concept.tex}
+\input{chapters/4_implementation.tex}
+\input{chapters/5_testing.tex}
+\input{chapters/6_summary.tex}
+
+%\printbibliography
+
+\end{document}

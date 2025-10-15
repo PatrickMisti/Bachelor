@@ -1,0 +1,35 @@
+{
+  // === ZWINGE Docker-Recipe ===
+  "latex-workshop.latex.recipes": [
+    { "name": "Docker-LaTeXmk", "tools": ["docker-latexmk"] }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "docker-latexmk",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-v",
+        "%DIR%:/workdir",
+        "-w",
+        "/workdir",
+        "texlive/texlive:latest",
+        "latexmk",
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "%DOCFILE%"
+      ]
+    }
+  ],
+
+  // === SORGE DAFÜR, DASS AUTOBUILD DIESES RECIPE NIMMT ===
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.latex.autoBuild.recipe": "Docker-LaTeXmk",
+  "latex-workshop.latex.recipe.default": "first",   // falls deine Extension diese Option nutzt
+
+  // === Viewer & Sonstiges ===
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.message.update.show": false
+}
