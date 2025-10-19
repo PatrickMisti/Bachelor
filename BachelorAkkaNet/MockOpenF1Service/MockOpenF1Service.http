@@ -1,0 +1,6 @@
+@MockOpenF1Service_HostAddress = http://localhost:5098
+
+GET {{MockOpenF1Service_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

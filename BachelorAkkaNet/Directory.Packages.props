@@ -3,31 +3,33 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Akka" Version="1.5.49" />
-    <PackageVersion Include="Akka.Cluster" Version="1.5.49" />
-    <PackageVersion Include="Akka.Cluster.Hosting" Version="1.5.49" />
-    <PackageVersion Include="Akka.Cluster.Sharding" Version="1.5.49" />
-    <PackageVersion Include="Akka.Cluster.Tools" Version="1.5.49" />
-    <PackageVersion Include="Akka.Hosting" Version="1.5.49" />
-    <PackageVersion Include="Akka.Persistence" Version="1.5.49" />
-    <PackageVersion Include="Akka.Persistence.Hosting" Version="1.5.49" />
-    <PackageVersion Include="Akka.Persistence.Sql" Version="1.5.44" />
-    <PackageVersion Include="Akka.Persistence.Sql.Hosting" Version="1.5.44" />
-    <PackageVersion Include="Akka.Serialization.Hyperion" Version="1.5.49" />
-    <PackageVersion Include="Akka.Streams" Version="1.5.49" />
+    <PackageVersion Include="Akka" Version="1.5.54" />
+    <PackageVersion Include="Akka.Cluster" Version="1.5.54" />
+    <PackageVersion Include="Akka.Cluster.Hosting" Version="1.5.53" />
+    <PackageVersion Include="Akka.Cluster.Sharding" Version="1.5.54" />
+    <PackageVersion Include="Akka.Cluster.Tools" Version="1.5.54" />
+    <PackageVersion Include="Akka.Hosting" Version="1.5.53" />
+    <PackageVersion Include="Akka.Persistence" Version="1.5.54" />
+    <PackageVersion Include="Akka.Persistence.Hosting" Version="1.5.53" />
+    <PackageVersion Include="Akka.Persistence.Sql" Version="1.5.53" />
+    <PackageVersion Include="Akka.Persistence.Sql.Hosting" Version="1.5.53" />
+    <PackageVersion Include="Akka.Serialization.Hyperion" Version="1.5.54" />
+    <PackageVersion Include="Akka.Streams" Version="1.5.54" />
     <PackageVersion Include="Akka.Logger.Serilog" Version="1.5.25" />
-    <PackageVersion Include="Akka.Streams.TestKit" Version="1.5.49" />
-    <PackageVersion Include="Akka.TestKit.Xunit2" Version="1.5.49" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="Npgsql" Version="9.0.3" />
+    <PackageVersion Include="Akka.Streams.TestKit" Version="1.5.54" />
+    <PackageVersion Include="Akka.TestKit.Xunit2" Version="1.5.54" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="Npgsql" Version="9.0.4" />
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="9.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageVersion Include="Spectre.Console" Version="0.51.1" />
+    <PackageVersion Include="Spectre.Console" Version="0.52.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="9.0.6" />
   </ItemGroup>
 </Project>

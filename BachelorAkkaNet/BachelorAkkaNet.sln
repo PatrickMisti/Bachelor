@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{AC83B228-F3B1-4F22-B16A-5CDDA715FF60}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MockOpenF1Service", "MockOpenF1Service\MockOpenF1Service.csproj", "{AA381E94-8415-4C3F-8415-D8DDE2BAA882}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,12 @@ Global
 		{AC83B228-F3B1-4F22-B16A-5CDDA715FF60}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AC83B228-F3B1-4F22-B16A-5CDDA715FF60}.Testing|Any CPU.ActiveCfg = Release|Any CPU
 		{AC83B228-F3B1-4F22-B16A-5CDDA715FF60}.Testing|Any CPU.Build.0 = Release|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Testing|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA381E94-8415-4C3F-8415-D8DDE2BAA882}.Testing|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
