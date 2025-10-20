@@ -15,9 +15,20 @@
 \usepackage{booktabs}              % Schönere Tabellen
 \usepackage{caption}               % Bessere Bildunterschriften
 \usepackage{listings}              % Quellcode
-\usepackage{biblatex}              % Literaturverwaltung (modern)
-\addbibresource{bibliography.bib}
+\usepackage[
+  backend=biber,
+  style=authoryear,
+  citestyle=authoryear,
+  sorting=nyt,
+  maxcitenames=2,   % ab 3 Autoren -> et al.
+  maxbibnames=99,   % Bibliographie nicht unnötig kürzen
+  giveninits=true,  % Initialen statt volle Vornamen
+  uniquename=false  % KEIN Erzwingen von ausgeschriebenen Vornamen
+]{biblatex}              % Literaturverwaltung (modern)
 
+\addbibresource{literatur.bib}
+
+\renewcommand*{\mkbibparens}[1]{[#1]}
 % ====== Layout ======
 \geometry{a4paper, left=3cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
 \setstretch{1.5} % 1.5-zeilig
@@ -37,10 +48,11 @@
 
 \begin{titlepage}
 \centering
-{\Large Hochschule XYZ \\[1cm]}
-{\Huge \textbf{Titel der Bachelorarbeit}}\\[1cm]
-{\large Bachelorarbeit im Studiengang ...}\\[2cm]
-\textbf{Autor:} Dein Name\\
+{\Large Fachhochschule Hagenberg \\[1cm]}
+{\Huge \textbf{Konzeption und Evaluierung eines verteilten, aktorenbasierten Stream-Verarbeitungssystems mit
+Akka.NET}}\\[1cm]
+{\large Bachelorarbeit im Studiengang Software Entwicklung}\\[2cm]
+\textbf{Autor:} Patrick Mistlberger\\
 \textbf{Matrikelnummer:} 123456\\[0.5cm]
 \textbf{Betreuer:} Prof. Dr. Mustermann\\[2cm]
 \today
@@ -56,6 +68,7 @@
 \input{chapters/5_testing.tex}
 \input{chapters/6_summary.tex}
 
-%\printbibliography
+
+\printbibliography
 
 \end{document}

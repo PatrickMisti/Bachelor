@@ -1,5 +1,46 @@
 \chapter{Konzept und Architektur}
 scalierbarkeit wieso man es braucht für das projekt?
+
+In diesem Kapitel wird das konzeptionelle und technische Fundament des entwickelten Systems beschrieben. 
+Ziel ist es, eine skalierbare, fehlertolerante und reaktive Architektur zu realisieren, die sowohl Live-Daten 
+als auch historische Daten effizient verarbeiten kann. Diese Daten werden in das System integriert, verwaltet 
+und so aufbereitet, dass sie für nachgelagerte Komponenten leicht zugänglich und weiterverarbeitbar sind. 
+Im weiteren Verlauf werden zunächst die Grundlagen der Skalierbarkeit erläutert, bevor die Systemarchitektur, 
+die Rollen der Cluster-Komponenten sowie die Kommunikations- und Datenflüsse innerhalb des Systems vorgestellt 
+werden.
+
+\section{Skalierbarkeit und Motivation}
+
+Ein zentraler Aspekt des Projekts ist die effiziente Verarbeitung großer Datenmengen in Echtzeit. 
+Im Kontext der Formel-1-Datenanalyse entstehen pro Rennen mehrere hunderttausend Datensätze, 
+die eine Vielzahl unterschiedlicher Informationen umfassen, von Telemetriedaten über Zwischenzeiten, 
+Positionswechsel und Boxenstopps bis hin zu Sektorzeiten. Diese Datenströme sollen parallel verarbeitet 
+und in aggregierter Form zur Darstellung der aktuellen Rennsituation der einzelnen Fahrer bereitgestellt werden.
+
+Um sicherzustellen, dass das System auch bei steigender Datenrate zuverlässig arbeitet, muss es skalierbar ausgelegt sein. 
+Skalierbarkeit beschreibt die Fähigkeit eines Softwaresystems, seine Leistungsfähigkeit durch das Hinzufügen von Ressourcen zu erhöhen, 
+ohne Änderungen an der Anwendung selbst vornehmen zu müssen \parencite{bass2021}. Ein skalierbares System kann 
+somit wachsende Datenmengen oder Benutzeranforderungen verarbeiten, ohne dass ein vollständiges Redesign erforderlich wird.
+
+Im Rahmen dieses Projekts wird eine horizontale Skalierung realisiert. 
+Die Anwendung kann als verteiltes System mit mehreren Knoten betrieben werden, 
+wobei die einzelnen Rollen des Systems entweder gemeinsam in einem Prozess oder getrennt auf unterschiedliche 
+Knoten verteilt ausgeführt werden können. Diese flexible Ausführungsstrategie ermöglicht sowohl den Betrieb 
+als monolithische Anwendung als auch eine skalierte Ausführung über mehrere Prozesse oder physische Maschinen. 
+Selbst im monolithischen Modus kann das System dynamisch erweitert werden, indem zusätzliche Prozesse 
+in den Cluster eingebunden werden. Durch das Hinzufügen weiterer Knoten wird die Arbeitslast automatisch auf 
+mehrere Instanzen verteilt, was sowohl die Gesamtleistung als auch die Fehlertoleranz erhöht. 
+Fällt ein Knoten aus, übernehmen verbleibende Instanzen mit derselben Rolle automatisch deren Aufgaben.
+
+Durch den Einsatz von Akka.NET und dem Cluster Sharding Mechanismus 
+können neue Knoten nach ihrer Registrierung am Hauptknoten dynamisch in das System integriert werden. 
+Nach dem Beitritt zum Cluster übernehmen sie automatisch Teile der Verarbeitung, 
+ohne dass Konfigurationsänderungen oder Neustarts erforderlich sind \parencite{akkaNet}.
+Dieses Skalierungsprinzip führt zu einer flexiblen und anpassungsfähigen Architektur,
+bei der neu hinzukommende Prozesse automatisch in den Cluster integriert werden,
+ohne dass zusätzliche Konfigurationsschritte erforderlich sind.
+
+* Software Architecture in Practice Author Len Bass check und buch holen
 \section{Gesamtarchitektur des Systems}
 
 \section{Rollen im Cluster}
@@ -7,12 +48,18 @@ scalierbarkeit wieso man es braucht für das projekt?
 \subsection{Backend}
 \subsection{Coordinator}
 
+\section{Shardregion}
+
 \section{Proxy}
 
 \subsection{Singleton-Proxy}
 \subsection{Shard-Region-Proxy}
 
 \section{Kommunikation über Verteiltes Pub/Sub}
+
+\section{Streams}
+
+\subsection{Overflowstrategien}
 
 
 \section{Alternative Architekturvarianten}
