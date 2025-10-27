@@ -121,6 +121,13 @@ Es handelt sich um ein Werkzeug, das die verteilte Verwaltung zustandsbehafteter
 
 Der strukturelle Aufbau des Cluster Shardings ist wie folgt gegliedert:
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{assets/cluster-sharding.png}
+    \caption{Cluster Sharding Architektur \parencite{cluster_sharding_petabridge}}
+    \label{fig:architecture}
+\end{figure}
+
 \begin{itemize}
     \item \textbf{ShardRegion:}
     Eine logische Gruppierung von Entitäten, die über mehrere Knoten im Cluster verteilt sind. Sie dient als zentraler Einstiegspunkt für eingehende Nachrichten und verwaltet die Zuordnung von Shards zu den entsprechenden Knoten \parencite{cluster_sharding_petabridge}.
@@ -134,7 +141,7 @@ Das Ziel des Cluster Shardings besteht darin, sicherzustellen, dass im gesamten 
 Darüber hinaus wird eine gleichmäßige Verteilung der Entitäten über alle verfügbaren Knoten angestrebt, um eine optimale Ressourcenauslastung und Lastverteilung zu gewährleisten.  
 Dies wird durch den Einsatz von Hashing-Algorithmen erreicht, die bestimmen, auf welchem Knoten eine bestimmte Entität platziert wird.  
 
-Die \textbf{ShardRegion} ist zudem für das Rebalancing verantwortlich, also die Umverteilung von Shards, wenn Knoten dem Cluster beitreten oder diesen verlassen.  
+Die ShardRegion ist zudem für das Rebalancing verantwortlich, also die Umverteilung von Shards, wenn Knoten dem Cluster beitreten oder diesen verlassen.  
 Darüber hinaus koordiniert sie den Lebenszyklus der Entitäten, indem sie diese bei Bedarf erstellt, passiviert oder entfernt \parencite{cluster_sharding_petabridge}.
 
 \subsection{Neuausgleich der Shards}
@@ -150,10 +157,19 @@ Um Datenverlust zu vermeiden, sollten Entitäten daher so gestaltet sein, dass s
 Die Logik für das Rebalancing kann bei Bedarf durch die Implementierung einer benutzerdefinierten Zuweisungsstrategie angepasst werden.  
 Standardmäßig verwendet Akka.NET eine Hash-basierte Zuweisungsstrategie, die eine gleichmäßige Verteilung der Shards über die verfügbaren Clusterknoten sicherstellt \parencite{getakka_cluster_sharding}.
 
-\section{Proxy}
+\subsection{ShardRegion-Proxy}
+
+
+Ein ShardRegion-Proxy wird benötigt, wenn eine Kommunikation mit einer ShardRegion stattfindet, die sich nicht auf demselben Knoten befindet\parencite{getakka_cluster_sharding}.
+
+Da die ShardRegion-Instanz ausschließlich auf den Knoten mit der Rolle \textit{Backend} existiert, muss ein Proxy verwendet werden, um von außerhalb dieser Rolle auf die ShardRegion zuzugreifen.
+
+\section{Singleton}
+
+
+
 
 \subsection{Singleton-Proxy}
-\subsection{ShardRegion-Proxy}
 
 \section{Kommunikation über Verteiltes Pub/Sub}
 
