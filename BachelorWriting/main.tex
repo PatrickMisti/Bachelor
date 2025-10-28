@@ -1,74 +1,100 @@
-% !TeX program = pdflatex
-\documentclass[a4paper,12pt,oneside]{scrreprt} % KOMA-Script für Abschlussarbeiten
+%%% Dateikodierung: UTF-8
 
-% ====== Pakete ======
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[ngerman]{babel}        % Deutsche Sprache
-\usepackage{csquotes}              % Korrekte Anführungszeichen
-\usepackage{graphicx}              % Bilder einbinden
-\usepackage{float}                 % Genaue Bildpositionierung
-\usepackage{amsmath,amssymb}       % Mathematische Formeln
-\usepackage{hyperref}              % Links und PDF-Metadaten
-\usepackage{geometry}              % Seitenränder
-\usepackage{setspace}              % Zeilenabstand
-\usepackage{booktabs}              % Schönere Tabellen
-\usepackage{caption}               % Bessere Bildunterschriften
-\usepackage{listings}              % Quellcode
-\usepackage[
-  backend=biber,
-  style=authoryear,
-  citestyle=authoryear,
-  sorting=nyt,
-  maxcitenames=2,   % ab 3 Autoren -> et al.
-  maxbibnames=99,   % Bibliographie nicht unnötig kürzen
-  giveninits=true,  % Initialen statt volle Vornamen
-  uniquename=false  % KEIN Erzwingen von ausgeschriebenen Vornamen
-]{biblatex}              % Literaturverwaltung (modern)
+%%% Magic Comments zum Setzen der korrekten Parameter in kompatiblen IDEs
+% !TeX encoding = utf8
+% !TeX program = pdflatex 
+% !TeX spellcheck = de_DE
+% !BIB program = biber
 
-\addbibresource{literatur.bib}
+\RequirePackage[utf8]{inputenc} % bei Verw. von lualatex oder xelatex entfernen!
+\RequirePackage{hgbpdfa}				% Remove if NO PDF/A output is desired
 
-\renewcommand*{\mkbibparens}[1]{[#1]}
-% ====== Layout ======
-\geometry{a4paper, left=3cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
-\setstretch{1.5} % 1.5-zeilig
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt}
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    urlcolor=blue,
-    citecolor=black,
-    pdftitle={Bachelorarbeit},
-    pdfauthor={Dein Name},
-}
+\documentclass[type=master,theme=default,language=german,titlelanguage=german,smartquotes,apa]{hgbthesis}
+% Zulässige Optionen in [..]: 
+%    Typ der Arbeit (type=): 'master' (default), 'bachelor', 'diploma', 'phd', 'internship'
+%    Theme der Titelseite (theme=): 'default' (default), 'fhooe24'
+%    Als Exposé verwenden: 'proposal' oder 'proposal=true' 
+%    Hauptsprache im Dokument (language=): 'german' (default), 'english'
+%    Sprache der Titelseite (titlelanguage=): 'german', 'english' (default is main language)
+%    Umwandlung in typografische Anführungszeichen: 'smartquotes'
+%    APA Zitierstil: 'apa'
+%    Layout: 'oneside' (einseitig, default), 'twoside' (zweiseitig)
+%%%-----------------------------------------------------------------------------
 
-% ====== Dokument ======
+\graphicspath{{images/}}  % Verzeichnis mit Bildern und Grafiken
+\bibliography{hgbreferences} % Biblatex-Literaturdatei (hgbreferences.bib)
+
+%%%-----------------------------------------------------------------------------
 \begin{document}
+%%%-----------------------------------------------------------------------------
 
-\begin{titlepage}
-\centering
-{\Large Fachhochschule Hagenberg \\[1cm]}
-{\Huge \textbf{Konzeption und Evaluierung eines verteilten, aktorenbasierten Stream-Verarbeitungssystems mit
-Akka.NET}}\\[1cm]
-{\large Bachelorarbeit im Studiengang Software Entwicklung}\\[2cm]
-\textbf{Autor:} Patrick Mistlberger\\
-\textbf{Matrikelnummer:} 123456\\[0.5cm]
-\textbf{Betreuer:} Prof. Dr. Mustermann\\[2cm]
-\today
-\end{titlepage}
+%%%-----------------------------------------------------------------------------
+% Angaben für die Titelei (Titelseite, Erklärung etc.)
+%%%-----------------------------------------------------------------------------
 
+\title{Konzeption und Evaluierung eines verteilten, aktorenbasierten Stream-Verarbeitungssystems mit
+Akka.NET
+}
+\subtitle{Aktorensystem}
+\author{Patrick Mistlberger}
+
+\programtype{Fachhochschul-Bachelorstudiengang} % oder Fachhochschul-Bachelorstudiengang
+\programname{Universal Computing}
+\institution{Fachhochschule Oberösterreich}
+
+\placeofstudy{Hagenberg}
+\dateofsubmission{2025}{07}{01} % {JJJJ}{MM}{TT}
+
+% Liste der Betreuungspersonen, bis zu 4 sind möglich, Titel in [] ist optional
+\advisor{FH-Prof. DI Johann Heinzelreiter}
+%\advisor[Zweitbetreuerin]{FH-Prof.\textsuperscript{in} Susanna A.~D. Visor, PhD}
+
+\license{cc}      % Unter Creative Commons Lizenz veröffentlichen (empfohlen)
+%\license{strict} % Restriktieve Lizenz, "Alle Rechte vorbehalten"
+
+%%%-----------------------------------------------------------------------------
+\frontmatter                                       % Titelei (röm. Seitenzahlen)
+%%%-----------------------------------------------------------------------------
+
+\maketitle
 \tableofcontents
-\clearpage
 
-\input{chapters/1_intro.tex}
-\input{chapters/2_basic.tex}
-\input{chapters/3_concept.tex}
-\input{chapters/4_implementation.tex}
-\input{chapters/5_testing.tex}
-\input{chapters/6_summary.tex}
+\include{front/vorwort} % Ein Vorwort ist optional
+\include{front/kurzfassung}		
+\include{front/abstract}
 
+%%%-----------------------------------------------------------------------------
+\mainmatter                             % Hauptteil (ab hier arab. Seitenzahlen)
+%%%-----------------------------------------------------------------------------
 
-\printbibliography
+\include{chapters/1_intro}
+\include{chapters/2_basic}
+\include{chapters/3_concept}
+\include{chapters/4_implementation}
+\include{chapters/5_testing}
+\include{chapters/6_summary}
 
+%%%-----------------------------------------------------------------------------
+\appendix                                                               % Anhang 
+%%%-----------------------------------------------------------------------------
+
+% \include{back/anhang_a} % Technische Ergänzungen
+% \include{back/anhang_b} % Inhalt der CD-ROM/DVD
+% \include{back/anhang_c} % Chronologische Liste der Änderungen
+% \include{back/anhang_d} % Quelltext dieses Dokuments
+
+%%%-----------------------------------------------------------------------------
+\backmatter                          % Schlussteil (Quellenverzeichnis und dgl.)
+%%%-----------------------------------------------------------------------------
+
+\MakeBibliography % Quellenverzeichnis
+
+%%%-----------------------------------------------------------------------------
+% Messbox zur Druckkontrolle
+%%%-----------------------------------------------------------------------------
+
+\include{back/messbox}
+
+%%%-----------------------------------------------------------------------------
 \end{document}
+%%%-----------------------------------------------------------------------------
