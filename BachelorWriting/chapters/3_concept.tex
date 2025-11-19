@@ -1,17 +1,17 @@
 \chapter{Konzept und Architektur}
 
-In diesem Kapitel wird das konzeptionelle und technische Fundament des entwickelten Systems beschrieben. 
-Ziel ist es, eine skalierbare, fehlertolerante und reaktive Architektur zu realisieren, die sowohl Live-Daten 
-als auch historische Daten effizient verarbeiten kann. Diese Daten werden in das System integriert, verwaltet 
-und so aufbereitet, dass sie für nachgelagerte Komponenten leicht zugänglich und weiterverarbeitbar sind. 
-Im weiteren Verlauf werden zunächst die Grundlagen der Skalierbarkeit erläutert, bevor die Systemarchitektur, 
-die Rollen der Cluster-Komponenten sowie die Kommunikations- und Datenflüsse innerhalb des Systems vorgestellt 
-werden.
+In diesem Kapitel wird das konzeptionelle und technische Fundament des entwickelten Systems dargestellt. 
+Ziel ist der Entwurf einer skalierbaren, fehlertoleranten und reaktiven Architektur, die sowohl Live-Daten 
+als auch historische Daten effizient verarbeiten kann. Die erfassten Daten werden in das System eingespielt, 
+dort strukturiert verwaltet und anschließend so aufbereitet, dass nachgelagerte Komponenten sie ohne 
+zusätzliche Verarbeitungsschritte nutzen können. Im weiteren Verlauf werden zunächst die Grundlagen der 
+Skalierbarkeit erläutert, bevor die Systemarchitektur, die Rollen der Cluster-Komponenten sowie die 
+Kommunikations- und Datenflüsse innerhalb des Systems vorgestellt werden.
 
 \section{Skalierbarkeit und Motivation}
 
 Ein zentraler Aspekt des Projekts ist die effiziente Verarbeitung großer Datenmengen in Echtzeit. 
-Im Kontext der Formel-1-Datenanalyse entstehen pro Rennen mehrere hunderttausend Datensätze, 
+Im Kontext der Formel-1-Datenanalyse entstehen pro Rennen mehrere Hunderttausend Datensätze, 
 die eine Vielzahl unterschiedlicher Informationen umfassen, von Telemetriedaten über Zwischenzeiten, 
 Positionswechsel und Boxenstopps bis hin zu Sektorzeiten. Diese Datenströme sollen parallel verarbeitet 
 und in aggregierter Form zur Darstellung der aktuellen Rennsituation der einzelnen Fahrer bereitgestellt werden.
@@ -21,7 +21,9 @@ Skalierbarkeit beschreibt die Fähigkeit eines Softwaresystems, seine Leistungsf
 ohne Änderungen an der Anwendung selbst vornehmen zu müssen \parencite{bass2021}. Ein skalierbares System kann 
 somit wachsende Datenmengen oder Benutzeranforderungen verarbeiten, ohne dass ein vollständiges Redesign erforderlich wird.
 
-Im Rahmen dieses Projekts wird eine horizontale Skalierung realisiert. 
+Im Rahmen dieses Projekts wird horizontale Skalierung realisiert. 
+Unter horizontaler Skalierung versteht man die Erweiterung eines Systems durch 
+das Hinzufügen zusätzlicher Knoten, die gemeinsam dieselbe Aufgabe ausführen können \parencite{bass2021}.
 Die Anwendung kann als verteiltes System mit mehreren Knoten betrieben werden, 
 wobei die einzelnen Rollen des Systems entweder gemeinsam in einem Prozess oder getrennt auf unterschiedliche 
 Knoten verteilt ausgeführt werden können. Diese flexible Ausführungsstrategie ermöglicht sowohl den Betrieb 
@@ -46,8 +48,8 @@ Abbildung \ref{fig:own-architecture} zeigt die zentralen Komponenten des Systems
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/architecture.v1.png}
-    \caption{Architekturübersicht des Projekts}
+    \includegraphics[width=0.8\textwidth]{assets/architecture.v2.png}
+    \caption{Architektur des Prototyps}
     \label{fig:own-architecture}
 \end{figure}
 
@@ -67,7 +69,8 @@ des Clusters sind grundsätzlich zwei Ausführungsmodi vorgesehen:
 
 Jeder Knoten im Cluster kann eine der folgenden Rollen übernehmen: Ingress, Backend und Coordinator.
 Diese Rollen sind für die verschiedenen Aufgaben innerhalb des Systems verantwortlich und arbeiten zusammen, 
-um die Verarbeitung und Bereitstellung der Daten sicherzustellen.
+um die Verarbeitung und Bereitstellung der Daten sicherzustellen. Die drei Rollen werden in Abschnitt \ref{sec:cluster-rols}
+im Detail erläutert.
 
 Zur Verwaltung und strukturierten Weiterleitung der Daten wird das Cluster-Sharding-Konzept von Akka.NET eingesetzt.
 Damit Nachrichten effizient an die jeweilige ShardRegion gesendet und von dieser empfangen werden können, 
@@ -82,11 +85,11 @@ Publish/Subscribe-System eingesetzt.Dieses ermöglicht es den verschiedenen Roll
 asynchron auszutauschen und auf Ereignisse zu reagieren, ohne dass direkte Verbindungen erforderlich sind.
 
 
-\section{Rollen im Cluster}
+\section{Rollen im Cluster} \label{sec:cluster-rols}
 
 Dieses Kapitel beschreibt die drei Hauptrollen innerhalb des Clusters: Ingress, Backend 
 und Coordinator. Jede dieser Rollen erfüllt eine klar abgegrenzte Funktionalität und trägt 
-gemeinsam zur Gesamtfunktionalität des Systems bei.
+zur Gesamtfunktionalität des Systems bei.
 
 \subsection{Ingress}
 
@@ -143,12 +146,12 @@ zu kommunizieren, ohne die physischen Standorte der Zielakteure kennen zu müsse
 Es handelt sich um ein Werkzeug, das die verteilte Verwaltung zustandsbehafteter Akteure über 
 mehrere Knoten innerhalb eines Clusters ermöglicht \parencite{cluster_sharding_petabridge}.  
 
-Der strukturelle Aufbau des Cluster Shardings ist wie folgt gegliedert:
+Cluster Sharding weist den in Abbildung \ref{fig:architecture} dargestellten strukturellen Aufbau auf.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.5\textwidth]{assets/cluster-sharding.png}
-    \caption{Cluster Sharding Architektur \parencite{cluster_sharding_petabridge}}
+    \caption{Cluster-Sharding-Architektur \parencite{cluster_sharding_petabridge}}
     \label{fig:architecture}
 \end{figure}
 
@@ -159,35 +162,39 @@ Der strukturelle Aufbau des Cluster Shardings ist wie folgt gegliedert:
     anhand der Entity-ID ermittelt, welche Shard und welcher Knoten für die Verarbeitung zuständig ist.
     Neben der reinen Nachrichtenverteilung steuert die ShardRegion auch den Lebenszyklus der Entitäten. 
     Sie erstellt Entitäten bei Bedarf, kann sie passivieren, wenn sie längere Zeit nicht genutzt werden, 
-    und organisiert ihre Neuzuweisung im Falle von Clusteränderungen.
-    \parencite{cluster_sharding_petabridge}
+    und organisiert ihre Neuzuweisung, falls sich die Struktur des Clusters ändert \parencite{cluster_sharding_petabridge}.
 
     \item \textbf{Shard:}
     Die Shard stellt die eigentliche Verteilungseinheit im Cluster dar. Sie definiert, auf welchem Knoten 
     sich eine Gruppe von Entitäten befindet und übernimmt die Verwaltung dieser Entitäten. Intern agiert 
-    sie als übergeordneter Akteur und organisiert jede Entität gemäß dem Child-per-Entity-Muster.
-    \parencite{cluster_sharding_petabridge}
+    sie als übergeordneter Akteur und organisiert jede Entität gemäß dem Child-per-Entity-Muster \parencite{cluster_sharding_petabridge}.
+    
+    Das Child-per-Entity-Muster beschreibt ein Kompositionsprinzip, bei dem ein Elternaktor jede 
+    Entität als eigenen Kindaktor repräsentiert. Der Elternaktor verwaltet dabei eine Zuordnung 
+    zwischen Domänenobjekten und den korrespondierenden Kindaktoren und kann diese bei Bedarf 
+    erstellen, wiederverwenden oder terminieren. Dieses Muster wird in Akka.NET sowohl im 
+    Cluster Sharding als auch in anderen verteilten Komponenten eingesetzt \parencite{child-per-entity_petabridge}.
 
     \item \textbf{Entity:}
     Die Entität ist die kleinste Verarbeitungseinheit im Cluster Sharding. Sie repräsentiert einen konkreten, 
     zustandsbehafteten Akteur, der über eine eindeutige ID identifiziert wird und Nachrichten eigenständig 
-    empfangen und verarbeiten kann.
-    \parencite{cluster_sharding_petabridge}
+    empfangen und verarbeiten kann \parencite{cluster_sharding_petabridge}.
 \end{itemize}
 
 Das Ziel des Cluster Shardings besteht darin, sicherzustellen, dass im gesamten Cluster stets genau eine Instanz 
 jeder Entität existiert. Darüber hinaus wird eine gleichmäßige Verteilung der Entitäten über alle verfügbaren 
 Knoten angestrebt, um eine optimale Ressourcenauslastung und Lastverteilung zu gewährleisten. Dies wird durch den 
 Einsatz von Hashing-Algorithmen erreicht, die bestimmen, auf welchem Knoten eine bestimmte Entität platziert wird.
+Durch diese gleichmäßige Verteilung wird verhindert, dass einzelne Knoten überlastet werden, was zu einer insgesamt 
+besseren und gleichmäßigeren Auslastung der verfügbaren Ressourcen.
 
 Die ShardRegion ist zudem für das Rebalancing verantwortlich, also die Umverteilung von Shards, wenn Knoten dem 
 Cluster beitreten oder diesen verlassen. Sie koordiniert außerdem den gesamten Lebenszyklus der Entitäten, 
-indem sie diese bei Bedarf erstellt, passiviert oder entfernt.
-\parencite{cluster_sharding_petabridge}
+indem sie diese bei Bedarf erstellt, passiviert oder entfernt \parencite{cluster_sharding_petabridge}.
 
 \subsection{Neuausgleich der Shards}
 
-Ein zentraler Aspekt des Cluster Shardings ist der Neuausgleich (Rebalancing) der Shards. Dieser Prozess wird vom 
+Ein zentraler Aspekt des Cluster-Shardings ist der Neuausgleich (Rebalancing) der Shards. Dieser Prozess wird vom 
 Shard-Koordinator gesteuert, der alle beteiligten Akteure im Cluster darüber informiert, dass die Übergabe einer 
 Shard begonnen hat. Während der Migration werden eingehende Nachrichten für die betroffene Shard zunächst 
 zwischengespeichert. Sobald die Übertragung abgeschlossen ist, werden die bisherigen Shard-Instanzen beendet und 
@@ -195,8 +202,7 @@ die gespeicherten Nachrichten an die neuen Shard-Instanzen weitergeleitet.
 
 Während dieses Vorgangs wird der Zustand der Entitäten nicht automatisch migriert. Um Datenverlust zu vermeiden, 
 sollten Entitäten daher so implementiert sein, dass ihr Zustand persistent gespeichert und bei Bedarf 
-wiederhergestellt werden kann.
-\parencite{cluster_sharding_petabridge}
+wiederhergestellt werden kann \parencite{cluster_sharding_petabridge}.
 
 Die Logik des Rebalancing kann bei Bedarf durch eine benutzerdefinierte Zuweisungsstrategie angepasst werden. 
 Standardmäßig verwendet Akka.NET eine Hash-basierte Verteilung, um eine gleichmäßige Auslastung der verfügbaren 
@@ -206,11 +212,10 @@ Knoten sicherzustellen.
 \subsection{ShardRegion-Proxy}
 
 Ein ShardRegion-Proxy wird benötigt, wenn eine Kommunikation mit einer ShardRegion stattfindet, die sich nicht 
-auf demselben Knoten befindet.
-\parencite{getakka_cluster_sharding}
+auf demselben Knoten befindet \parencite{getakka_cluster_sharding}.
 
-In diesem System liegt die ShardRegion ausschließlich auf Knoten mit der Rolle \textit{Backend}. Daher muss ein 
-Proxy verwendet werden, wenn Komponenten außerhalb dieser Rolle Nachrichten an die ShardRegion senden sollen.
+In der vorliegenden Architektur befindet sich die ShardRegion ausschließlich auf Knoten mit der Rolle \textit{Backend}. 
+Daher muss ein Proxy verwendet werden, wenn Komponenten außerhalb dieser Rolle Nachrichten an die ShardRegion senden sollen.
 
 \section{Singleton}
 
@@ -227,45 +232,43 @@ gesamte System haben.
 Die Bereitstellung der Singleton-Instanz erfolgt auf Knoten, die über eine vordefinierte Rolle verfügen. Existieren 
 mehrere Knoten mit dieser Rolle, wird die Instanz üblicherweise auf dem Knoten mit der längsten Cluster-Mitgliedschaft 
 ausgeführt. Im Falle eines Ausfalls übernimmt automatisch ein anderer geeigneter Knoten die Ausführung des Singletons, 
-wodurch eine hohe Verfügbarkeit gewährleistet bleibt.
-\parencite{getakka_singleton}
+wodurch eine hohe Verfügbarkeit gewährleistet bleibt \parencite{getakka_singleton}.
 
 \subsection{Singleton-Proxy}
 
 Um auf den Cluster-Singleton zugreifen zu können, wird ein Singleton-Proxy verwendet. Dieser ermöglicht es allen 
 Komponenten innerhalb des Clusters, Nachrichten an den Singleton zu senden, ohne dessen tatsächlichen Ausführungsort 
-kennen zu müssen. Die Identifikation erfolgt über einen definierten Marker, sodass keine explizite Actor- oder 
+kennen zu müssen. Die Identifikation erfolgt über einen definierten Marker, sodass keine explizite AKtor- oder 
 Netzwerkadresse notwendig ist.
 
 Falls der Singleton vorübergehend nicht erreichbar ist, werden eingehende Nachrichten im Proxy gepuffert und nach 
 Wiederherstellung der Verbindung automatisch weitergeleitet. Wird die maximale Puffergöße überschritten, verwirft 
-der Proxy die ältesten Nachrichten, um eine Überlastung zu verhindern.
-\parencite{getakka_singleton}
+der Proxy die ältesten Nachrichten, um eine Überlastung zu verhindern \parencite{getakka_singleton}.
 
 \section{Kommunikation über Verteiltes Pub/Sub}
 
-Der Einsatz verteilter Kommunikation in Akka.NET erfolgt immer dann, wenn Nachrichten nicht mehr nur innerhalb 
-eines einzelnen Aktorensystems ausgetauscht werden, sondern zwischen mehreren Systemen verteilt kommuniziert wird, 
-unabhängig davon auf welchen physischen oder virtuellen Maschinen diese Systeme betrieben werden. In Abbildung 
-\ref{fig:distribute-pub-sub} ist eine solche verteilte Publish Subscribe Architektur veranschaulicht.
+Der Einsatz verteilter Kommunikation in Akka.NET wird relevant, sobald Nachrichten nicht mehr nur zwischen Aktoren 
+auf demselben Knoten ausgetauscht werden, sondern zwischen Aktoren eines verteilten Aktorensystems, das über mehrere 
+Knoten hinweg betrieben wird. Dabei spielt es keine Rolle, auf welchen physischen oder virtuellen Maschinen diese 
+Knoten ausgeführt werden. In Abbildung \ref{fig:distribute-pub-sub} ist eine solche verteilte Publish Subscribe 
+Architektur veranschaulicht.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{assets/dis-p_s.png}
-    \caption{Verteiltes Publish-Subscribe Architektur \parencite{distributed_petabridge}}
+    \caption{Verteilte Publish-Subscribe-Architektur \parencite{distributed_petabridge}}
     \label{fig:distribute-pub-sub}
 \end{figure}
 
 Für die Kommunikation registriert sich ein Aktor, der Ereignisse von anderen Aktoren empfangen möchte, bei seinem 
 lokalen Mediator unter Angabe eines Topics oder eines Aktorenpfads. Nach der Registrierung erhält der abonnierende 
-Aktor eine Bestätigungsmeldung womit sichergestellt wird, dass er nun Nachrichten über das entsprechende Topic 
+Aktor eine Bestätigungsmeldung, womit sichergestellt wird, dass er nun Nachrichten über das entsprechende Topic 
 empfangen kann.
 
 Wenn ein Aktor eine Nachricht an alle Abonnenten eines Topics senden möchte, informiert er ebenfalls seinen lokalen 
 Mediator durch eine Publikationsnachricht und gibt dabei das betreffende Topic oder den Zielpfad an. In Szenarien, 
 in denen eine Nachricht nur an einen einzelnen Abonnenten gesendet werden soll, ist dies ebenfalls möglich. 
-Standardmäßig erfolgt die Zustellung dabei zufällig an einen der Teilnehmer der Abonnentengruppe.
-\parencite{distributed_petabridge}
+Standardmäßig erfolgt die Zustellung dabei zufällig an einen der Teilnehmer der Abonnentengruppe \parencite{distributed_petabridge}.
 
 \section{Streams}
 
