@@ -272,9 +272,92 @@ Standardmäßig erfolgt die Zustellung dabei zufällig an einen der Teilnehmer d
 
 \section{Streams}
 
-testing
+Akka.Streams bietet ein modellbasiertes und fehlertolerantes Konzept zur Verarbeitung kontinuierlicher Datenströme innerhalb eines 
+Aktorensystems. Dabei ermöglicht das Framework die Übertragung von Daten zwischen Produzenten und Konsumenten, ohne dass interne 
+Pufferspeicher oder Mailboxen überlaufen können. Dies wird durch einen kontrollierten und ressourcenschonenden Datenfluss erreicht, 
+der sicherstellt, dass nur so viele Elemente produziert werden, wie tatsächlich verarbeitet werden können.
+
+Ein zentrales Prinzip ist dabei der integrierte Rückstau-Mechanismus (Backpressure). Dieser Mechanismus sorgt dafür, dass Produzenten 
+automatisch verlangsamt werden, sobald nachgelagerte Verarbeitungsschritte oder Konsumenten die eingehenden Daten nicht in ausreichender 
+Geschwindigkeit verarbeiten können. Backpressure ist ein Kernelement der Reactive-Streams-Spezifikation, auf der Akka.Streams basiert, 
+und stellt sicher, dass das System auch unter hoher Last stabil und vorhersehbar arbeitet \parencite{reactive_streams_spec, akka_streams_docs}.
 
 \subsection{Overflowstrategien}
 
+Akka.Streams stellt verschiedene Strategien zur Verfügung, um Situationen zu bewältigen, in denen ein Produzent schneller Daten erzeugt, 
+als ein Konsument diese verarbeiten kann. Sobald ein Puffer seine maximale Kapazität erreicht, legt die gewählte Overflowstrategie fest, 
+wie der Stream auf diesen Zustand reagiert \parencite{akka_streams_overflow_docs}.
+
+\begin{description}
+    \item[Backpressure:] 
+    Bei aktivem Backpressure wird der Datenfluss reguliert, indem ein Rückstau-Signal an den 
+    Produzenten gesendet wird. Dieser verlangsamt seine Erzeugungsrate, bis im Puffer wieder 
+    Kapazität frei ist. Dadurch bleibt der Stream stabil, ohne Elemente zu verwerfen \parencite{akka_streams_overflow_docs}.
+
+    \item[DropBuffer:] 
+    Ist der Puffer voll und trifft ein neues Element ein, werden alle aktuell im Puffer 
+    enthaltenen Elemente verworfen. Anschließend wird das neu ankommende Element in den 
+    nun leeren Puffer eingefügt. Diese Strategie priorisiert stets die neuesten Daten \parencite{akka_streams_overflow_docs}.
+
+    \item[DropHead:] 
+    Bei einem vollen Puffer wird das Element verworfen, das sich am längsten im Puffer 
+    befindet. Auf diese Weise wird Platz für das neu eintreffende Element geschaffen, 
+    wodurch jüngere Daten bevorzugt werden \parencite{akka_streams_overflow_docs}.
+
+    \item[DropNew:] 
+    Ist der Puffer voll, wird das neu eintreffende Element verworfen, während der aktuelle 
+    Pufferinhalt unverändert bleibt. Diese Strategie schützt die bereits wartenden Elemente 
+    und verhindert zusätzlichen Druck auf nachgelagerte Komponenten \parencite{akka_streams_overflow_docs}.
+
+    \item[DropTail:] 
+    Wenn der Puffer voll ist, wird das zuletzt hinzugefügte (jüngste) Element verworfen, 
+    um Platz für ein neu eintreffendes Element zu schaffen. Im Gegensatz zu DropHead bleiben 
+    ältere Elemente erhalten \parencite{akka_streams_overflow_docs}.
+
+    \item[Fail:] 
+    Bei einem Pufferüberlauf wird der Stream sofort mit einem Fehlerzustand beendet. 
+    Diese Strategie wird vor allem dann eingesetzt, wenn Datenverlust nicht tolerierbar ist 
+    und ein Überlauf einen kritischen Fehler darstellt \parencite{akka_streams_overflow_docs}.
+\end{description}
 
 \section{Alternative Architekturvarianten}
+
+Im Rahmen des Systementwurfs wurden verschiedene alternative Architekturansätze analysiert und hinsichtlich 
+ihrer Eignung für die Projektanforderungen bewertet. Die Auswahl der finalen Lösung erfolgte auf Basis zentraler 
+Kriterien wie Skalierbarkeit, Fehlertoleranz und der Fähigkeit zur Verarbeitung großer Datenmengen in Echtzeit. 
+Im Folgenden werden exemplarisch mehrere Alternativen vorgestellt und begründet, warum diese im Kontext des 
+Projekts nicht weiterverfolgt wurden.
+
+\subsection*{Single-Node-Aktorensystem}
+Eine Ausführung des Systems in einem einzelnen Prozess ist grundsätzlich möglich und wird auch durch die aktuelle 
+Implementierung unterstützt. Eine rein monolithische Single-Node-Variante ohne verteilte Komponenten 
+würde jedoch keine horizontale Skalierung zulassen. Zudem könnte die Anwendung nicht auf mehrere Maschinen verteilt werden, 
+was sowohl die Skalierbarkeit als auch die Fehlertoleranz erheblich einschränken würde. Für den Einsatz unter hoher 
+Datenlast wäre dieses Modell daher ungeeignet.
+
+\subsection*{Microservices-Architektur}
+Eine Microservices-Architektur, bei der jede Funktionalität als eigenständiger Dienst implementiert wird, wurde ebenfalls 
+in Betracht gezogen. Obwohl ein solcher Ansatz eine hohe Modularität und unabhängige Skalierbarkeit einzelner Komponenten 
+ermöglicht, wäre der Infrastruktur- und Betriebsaufwand deutlich höher. Aspekte wie Service-Orchestrierung, Deployment, 
+Monitoring und die Absicherung der Inter-Service-Kommunikation würden die Komplexität des Gesamtsystems stark erhöhen, 
+ohne einen entscheidenden Vorteil für die Verarbeitung der zeitkritischen Formel-1-Daten zu bieten.
+
+\subsection*{Zentralisierte Datenbank}
+Auch der Ansatz, alle eingehenden Formel-1-Daten ausschließlich über eine zentralisierte Datenbank zu verwalten, wurde 
+evaluiert. Obwohl eine zentrale Datenhaltung die Konsistenz der Daten vereinfachen könnte, entsteht dadurch ein 
+Single Point of Failure. Zudem skaliert eine zentrale Datenbank nur begrenzt mit steigenden Datenmengen, und die 
+damit verbundene Latenz könnte die Anforderungen an eine Echtzeitverarbeitung nicht erfüllen. Daher wurde dieser Ansatz 
+als ungeeignet eingestuft.
+
+\subsection*{Nachrichtenwarteschlangen}
+Der Einsatz von Nachrichtenwarteschlangen wie RabbitMQ oder Apache Kafka zur Entkopplung der Systemkomponenten stellt eine 
+weitere mögliche Architekturvariante dar. Diese Technologien bieten eine zuverlässige und verteilte Nachrichtenverarbeitung. 
+Allerdings würde die Integration eines externen Message Brokers einen zusätzlichen Infrastruktur-Layer einführen und 
+damit sowohl die Komplexität als auch die Latenz erhöhen. Zudem würde die enge Kopplung an den zustandsbehafteten 
+Aktor-Ansatz verloren gehen, weshalb dieser Architekturansatz verworfen wurde.
+
+\subsection*{Bewertung}
+Zusammenfassend bietet die gewählte Architektur auf Basis von Akka.NET und Cluster Sharding die beste Balance zwischen 
+Skalierbarkeit, Fehlertoleranz und Echtzeitverarbeitung. Sie unterstützt sowohl eine dynamische Verteilung der 
+Rechenlast als auch eine robuste Verwaltung zustandsbehafteter Entitäten und erfüllt damit die Anforderungen des Projekts 
+in optimaler Weise.
