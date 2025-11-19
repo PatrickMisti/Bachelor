@@ -1,12 +1,269 @@
 \chapter{Implementierung}
 
-\section{Aufbau der Projektstruktur}
+\section{Projektstruktur}
+
+Die Projektstruktur ist so gewählt, dass der zentrale Anwendungsteil den vollständigen Code für das Kernmodul enthält. 
+Innerhalb dieses Moduls werden die verschiedenen Rollen des Systems klar voneinander getrennt umgesetzt. 
+Komponenten, die nicht direkt zum Kerngeschäft gehören, wie Infrastrukturkomponenten oder Tests, 
+sind in eigenständige Projekte ausgelagert. Dadurch wird die Wartbarkeit verbessert und eine klare Trennung 
+der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbildung~\ref{fig:project-structure} dargestellt.
+
+\definecolor{folderbg}{RGB}{124,166,198}
+\definecolor{folderborder}{RGB}{110,144,169}
+
+\def\Size{4pt}
+\tikzset{
+  folder/.pic={
+    \filldraw[draw=folderborder,top color=folderbg!50,bottom color=folderbg]
+      (-1.05*\Size,0.2\Size+5pt) rectangle ++(.75*\Size,-0.2\Size-5pt);  
+    \filldraw[draw=folderborder,top color=folderbg!50,bottom color=folderbg]
+      (-1.15*\Size,-\Size) rectangle (1.15*\Size,\Size);
+  }
+}
+
+
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    inner xsep=7pt,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- (.child anchor) pic {folder} \forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }  
+[BachelorAkkaNet
+  [FormulaOneAkkaNet
+    [Config]
+    [Ingress]
+    [Coordinator]
+    [ShardRegion]
+  ]
+  [Infrastructure
+    [General]
+    [Http]
+    [PubSub]
+    [ShardRegion]
+  ]
+  [Client]
+  [Tests]
+]
+\end{forest}
+
+Die modulare Struktur des Projekts stellt sicher, dass die implementierten Rollen des Systems klar voneinander 
+abgegrenzt sind. Jede Modulkomponente enthält ausschließlich die für ihre Rolle relevanten Aktorimplementierungen 
+und Logik. Die einzige gemeinsam genutzte Komponente ist die zentrale Konfiguration, die im Ordner 
+\textit{Config} abgelegt ist. Sie stellt sicher, dass alle Module konsistent in das .NET-Hostingmodell eingebunden 
+werden können.
+
+Das Projekt \textit{Infrastructure} umfasst wiederverwendbare Funktionen und Hilfskomponenten, die sowohl von den 
+Hauptmodulen als auch von den Systemtests und dem Client genutzt werden. Im \textit{Client}-Projekt erfolgt die 
+Darstellung und Auswertung der erfassten Daten, wodurch eine externe Visualisierung des Systemzustands möglich wird.
+
+Für die Implementierung wurden zentrale Bibliotheken aus dem Akka.NET-Ökosystem verwendet. 
+Dazu gehören Pakete für Clusterbildung, Sharding, Persistenz und Stream-Verarbeitung. 
+Zusätzlich kommen Hosting-Erweiterungen zum Einsatz, welche die Konfiguration der Cluster- 
+und Persistenzkomponenten über das .NET-Hostingmodell ermöglichen. Ergänzend werden Npgsql 
+für den Datenbankzugriff und Serilog für das Logging eingesetzt. Tabelle~\ref{tab:packages} 
+gibt einen Überblick über die relevanten Kernpakete.
+
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l l}
+\textbf{Paket} & \textbf{Version} \\
+\hline
+Akka & 1.5.54 \\
+Akka.Cluster & 1.5.54 \\
+Akka.Cluster.Sharding & 1.5.54 \\
+Akka.Hosting & 1.5.53 \\
+Akka.Cluster.Hosting & 1.5.53 \\
+Akka.Persistence & 1.5.54 \\
+Akka.Persistence.Sql & 1.5.53 \\
+Akka.Persistence.Hosting & 1.5.53 \\
+Akka.Persistence.Sql.Hosting & 1.5.53 \\
+Akka.Streams & 1.5.54 \\
+Akka.Serialization.Hyperion & 1.5.54 \\
+Npgsql & 9.0.4 \\
+Serilog & 4.3.0 \\
+\end{tabular}
+\caption{Verwendete Kernbibliotheken und Versionen}
+\label{tab:packages}
+\end{table}
+
+Die ausgewählten Pakete decken die zentralen technischen Anforderungen des Systems ab. Akka.Cluster und Akka.Cluster.Sharding 
+ermöglichen eine verteilte und fehlertolerante Verarbeitung der eingehenden Daten. Akka.Persistence und die zugehörigen 
+SQL-Erweiterungen stellen sicher, dass zustandsbehaftete Entitäten konsistent wiederhergestellt werden können. Akka.Streams 
+wird für die kontrollierte Verarbeitung der Datenströme eingesetzt. Mit den Hosting-Erweiterungen wird eine einheitliche 
+Konfiguration über das .NET-Hostingmodell ermöglicht, wodurch die Initialisierung des Clusters sowie der Persistence-Komponenten 
+vereinfacht wird. Serilog und Npgsql ergänzen die Architektur durch Logging und Datenbankanbindung.
+
+
+\section{Konfiguration und Initialisierung des Clusters}
+
+\subsection{HOCON Konfiguration}
+
+Die Konfiguration eines Akka.NET-Systems kann auf zwei unterschiedliche Arten erfolgen. 
+Zum einen kann die HOCON-Konfiguration aus einer externen Datei eingelesen werden, die den vollständigen 
+Konfigurationstext enthält. Zum anderen ermöglicht Akka.Hosting die Erstellung der Konfiguration direkt 
+über Erweiterungsmethoden innerhalb des .NET-Hostingmodells.
+
+Beide Ansätze wurden im Rahmen dieses Projekts eingesetzt. Für Konsolenanwendungen ist das Laden einer 
+separaten HOCON-Datei zweckmäßig, da der Overhead des Hostingmodells dort nicht erforderlich ist. 
+In Anwendungen, die auf dem .NET-Hostingmodell basieren, ist die programmgesteuerte Konfiguration über 
+Akka.Hosting dagegen besonders vorteilhaft, da sie eine engere Integration in den Lebenszyklus des Hosts 
+und eine klar strukturierte Initialisierung des Clusters ermöglicht.
+
+\subsubsection*{HOCON File}
+
+In klassischen Konsolenanwendungen ist es üblich, die Akka.NET-Konfiguration in einer separaten HOCON-Datei 
+zu hinterlegen und beim Start der Anwendung einzulesen.
+
+\begin{program}
+\caption{Auszug aus der HOCON-Konfiguration des Clients}
+\label{prog:hocon-client}
+\begin{GenericCode}
+akka {
+    loglevel = "INFO"
+    stdout-loglevel = "OFF"
+    loggers = ["Akka.Logger.Serilog.SerilogLogger, Akka.Logger.Serilog"]
+    
+    actor {
+      provider = cluster
+      serializers {
+        hyperion = "Akka.Serialization.HyperionSerializer, Akka.Serialization.Hyperion"
+      }
+      serialization-bindings {
+        "System.Object" = hyperion
+      }
+    }
+    
+    remote.dot-netty.tcp { 
+        hostname = "localhost"
+        port = 0 
+        maximum-frame-size = 2MiB
+        send-buffer-size    = 2MiB
+        receive-buffer-size = 2MiB
+    
+    }
+    
+    cluster {
+      roles = ["api"]
+      seed-nodes = [
+        "akka.tcp://cluster-system@localhost:5000"
+      ]
+    }
+}
+\end{GenericCode}
+\end{program}
+
+Wie in Programm~\ref{prog:hocon-client} dargestellt, folgt die Konfigurationsdatei der HOCON-Syntax, 
+die strukturell an JSON erinnert, jedoch flexibler und für Akka.NET optimiert ist. 
+Jede Akka-Konfiguration beginnt mit dem Hauptelement \texttt{akka}, unter dem die zentralen 
+Systemparameter definiert werden.
+
+Die initialen Einträge betreffen die Konfiguration des Loggings. Anschließend wird über 
+\texttt{actor.provider = cluster} festgelegt, dass dieser Prozess Teil eines verteilten Clusters ist. 
+Die Serialisierung der Nachrichten wird mithilfe des Hyperion-Serialisierers konfiguriert, der eine 
+effiziente binäre Datenrepräsentation ermöglicht und sich dadurch besonders für Clusterkommunikation eignet.
+
+Der Block \texttt{remote.dot-netty.tcp} enthält die Netzwerkkonfiguration. 
+Der Port ist auf \texttt{0} gesetzt, wodurch das System zur Laufzeit automatisch einen freien Port auswählt. 
+Weitere Parameter wie \texttt{maximum-frame-size} oder die Puffergrößen steuern die maximale Nachrichtengröße 
+und die Netzwerkeffizienz der Punkt-zu-Punkt-Kommunikation.
+
+Im Abschnitt \texttt{cluster} werden die Rollen des Knotens sowie die \textit{seed nodes} festgelegt. 
+Seed-Knoten dienen als initiale Kontaktpunkte beim Beitritt eines neuen Knotens zum Cluster. 
+Nach der ersten Verbindung erfolgt die weitere Clusterentdeckung über das Gossip-Protokoll. 
+Die Rollendefinition \texttt{api} legt fest, welche Aufgaben und Aktoren diesem Knoten im Clusterverbund zugeordnet sind.
+
+\subsubsection*{Akka.Hosting}
+
+\begin{program}
+\caption{Auszug aus der Akka.Hosting-Konfiguration des Backend-Moduls}
+\label{prog:hocon-hosting}
+\begin{CsCode}
+
+\end{CsCode}
+\end{program}
+
+
+
+
+Hier gehört rein:
+HOCON-Konfiguration (Rollen, Ports, Seeds, Clustering)
+ActorSystem-Initialisierung
+Sharding-Konfiguration (EntityID, ShardID, Extractors)
+Singleton-Konfiguration
+DI-Setup via Akka.Hosting (wenn du Hosting nutzt)
+
 \section{Eingangs-Service}
+
 Datenabgriff von OpenF1
+Datenabgriff von OpenF1
+Normalisierung der Daten
+Übergabe an Streams
+Retry-Strategien
+Fehlerbehandlung
 
-\section{Datenbearbeitung mit Akka Streams}
+\section{Datenbearbeitung mit Akka.Streams}
 
-\section{Datenbefüllung der Shard-Region mit ArbeiterAktoren}
+Aufbau des Stream-Graphs
+Flow → Map → Filter → Buffer → Sink
+Backpressure im konkreten System
+Overflowstrategien (Verweis auf Kapitel 3)
+Materialization
+
+\section{Verarbeitung in der ShardRegion}
+
+(„Datenbefüllung der ShardRegion mit Arbeiteraktoren“ ist ok, aber zu eng → besser allgemein formulieren)
+Worker-/Driver-Actor
+State-Management (telemetry state, sektoren, pace)
+Event Verarbeitung
+Persistence / Snapshots (falls vorhanden)
+Lebenszyklus der Entitäten (Passivation, Shard-Migration)
 
 \section{Nachrichtenverteilung im Cluster}
+
 Distributed PubSub
+Distributed PubSub:
+
+Einrichtung des DistributedPubSub-Mediators
+Subscription der Konsumenten
+Publish von Events
+Verwendung von Topics
+Vorteile für lose Kopplung
+
+\section{Cluster-Steuerung und Fehlertoleranz}
+Hier erklärst du:
+Coordinator-Singleton
+Steuerung von ShardRegion-Verfügbarkeit
+Handling von Node-Failures
+Rebalancing-Verhalten (auf Implementationsebene)
+Logs und Monitoring
+Dieser Abschnitt zeigt deinem Professor, dass deine Architektur wirklich robust ist.
+
+\section{Api oder Visualisierungsschicht}
+
+Wenn du eine API oder UI hast, kannst du hier erklären:
+Wie man auf Fahrer-Daten zugreift
+Welche Endpunkte/Views es gibt
+Wie Entity-Daten aggregiert dargestellt werden
+
+\section{Zusammenführung der Komponenten}
+
+Einfacher Abschnitt, um:
+den Datenfluss von „OpenF1 → Streams → Sharding → PubSub“
+End-to-End zu erklären
+Das zeigt, dass du die Implementation im Ganzen verstehst.
