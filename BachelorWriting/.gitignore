@@ -29,7 +29,7 @@
 *.nlo
 *.nls
 *.out
-*.pdf
+main.pdf
 *.pyg
 *.run.xml
 *.snm
