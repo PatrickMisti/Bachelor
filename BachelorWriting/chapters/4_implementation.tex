@@ -21,7 +21,7 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
   }
 }
 
-
+\label{fi:project-structure}
 \begin{forest}
   for tree={
     font=\ttfamily,
@@ -130,7 +130,7 @@ und eine klar strukturierte Initialisierung des Clusters ermöglicht.
 In klassischen Konsolenanwendungen ist es üblich, die Akka.NET-Konfiguration in einer separaten HOCON-Datei 
 zu hinterlegen und beim Start der Anwendung einzulesen.
 
-\begin{program}
+\begin{program}[H]
 \caption{Auszug aus der HOCON-Konfiguration des Clients}
 \label{prog:hocon-client}
 \begin{GenericCode}
@@ -190,23 +190,345 @@ Die Rollendefinition \texttt{api} legt fest, welche Aufgaben und Aktoren diesem 
 
 \subsubsection*{Akka.Hosting}
 
-\begin{program}
-\caption{Auszug aus der Akka.Hosting-Konfiguration des Backend-Moduls}
+um nicht immer eine Hocon-Datei reinladen zu müssen, wo gegebenfalls leichter fehler entstehen können, wurde Akka.Hosting entwickelt, 
+um die Konfiguration direkt im Code zu ermöglichen. Dies ist nützlich, da man so auch direkt in die Dependency Injection Pipeline des .NET Hostings integrieren kann.
+
+Bei meinem Projekt ist es wie schon beschrieben möglich die anwendung entweder als Monolithen als auch als verteiltes System zu starten. Daher habe ich die Konfiguration
+so wie in Abbildung~\ref{prog:hocon-hosting} gezeigt implementiert, um durch definierte Rollen die verschiedenen Komponenten des Systems zu initialisieren.
+Dies geschiedt durch parameter eingabe in der Console, die dann in der AkkaConfig Klasse ausgewertet werden. 
+
+Um die Konfiguration übersichtlich zu halten, habe ich Erweiterungsmethoden implementiert, die die Initialisierung der verschiedenen Rollen kapseln.
+Anderen Code der bestimmte initialisierung vornimmt, wie z.B. Cluster Optionen und Remote sowie die Serialisierung und Logging Konfigurationen, wurden in Erweiterungsmethoden ausgelagert.
+
+
+Anstatt die Konfiguration ausschließlich über externe HOCON-Dateien zu definieren, die beim manuellen Bearbeiten 
+anfällig für Fehler sein können, bietet Akka.Hosting die Möglichkeit, die Akka.NET-Konfiguration direkt im 
+Anwendungscode aufzubauen. Dadurch lässt sich die Konfiguration eng in die Dependency Injection Pipeline des 
+.NET-Hostingmodells integrieren und gemeinsam mit anderen Diensten der Anwendung verwalten.
+
+In diesem Projekt kann die Anwendung wahlweise als monolithischer Prozess oder als verteiltes System mit mehreren 
+Clusterknoten ausgeführt werden. Die Konfiguration wurde daher so gestaltet, dass auf Basis der zur Laufzeit 
+vergebenen Rollen die jeweils benötigten Komponenten initialisiert werden. Ein entsprechender Ausschnitt ist in 
+Programm~\ref{prog:hocon-hosting} dargestellt. Die Rollen werden über Parameter der Konsolenanwendung festgelegt 
+und anschließend in der Klasse \texttt{AkkaConfig} ausgewertet.
+
+Um die Konfiguration übersichtlich und wartbar zu halten, wurden zentrale Initialisierungsschritte in 
+Erweiterungsmethoden gekapselt. Diese Methoden übernehmen unter anderem die Einrichtung der Clusteroptionen, 
+der Remote-Kommunikation sowie der Serialisierungs- und Loggingkonfiguration und binden die jeweiligen Rollen 
+wie Ingress, Backend oder Coordinator in das Hostingmodell ein.
+
+
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Konfiguration}
 \label{prog:hocon-hosting}
 \begin{CsCode}
+public static IServiceCollection UseAkka(this IServiceCollection sp, AkkaConfig akkaHc, ConfigurationManager manager)
+{
+    string connectionString = manager.GetConnectionString("PostgreSql")!;
 
+    sp.AddAkka(akkaHc.ClusterName, akka =>
+    {
+        
+        akka.UseAkkaLogger();
+        akka.UseRemoteCluster(akkaHc);
+        akka.UseHyperion();
+
+        if (akkaHc.Roles.Contains(ClusterMemberRoles.Controller.ToStr()))
+            akka.RegisterCoordinator(akkaHc);
+
+        if (akkaHc.Roles.Contains(ClusterMemberRoles.Backend.ToStr()))
+        {
+            akka.RegisterShardRegion(akkaHc);
+            akka.RegisterBackendJournal(connectionString);
+        }
+            
+
+        if (akkaHc.Roles.Contains(ClusterMemberRoles.Ingress.ToStr()))
+            akka.RegisterIngress(akkaHc);
+
+        if (!akkaHc.Roles.Contains(ClusterMemberRoles.Controller.ToStr()))
+            akka.RegisterControllerProxy();
+    });
+    return sp;
+}
+\end{CsCode}
+\end{program}
+
+\subsubsection*{Akka.Hosting Koordinator-Initialisierung}
+
+Um exemplarisch zu zeigen, wie die Initialisierung der verschiedenen Rollen erfolgt, ist in Programm~\ref{prog:hocon-hosting-coordinator} 
+ein Auszug der Konfiguration für die \textit{Coordinator}-Rolle dargestellt.
+
+Zunächst wird ein Singleton-Aktor des Typs \texttt{ClusterCoordinator} registriert, der zentrale Steuerungsaufgaben 
+innerhalb des Clusters übernimmt. Damit andere Komponenten diesen Aktor über die Dependency-Injection-Pipeline 
+referenzieren können, wird ein sogenannter \textit{Marker} (\texttt{ClusterCoordinatorMarker}) verwendet. 
+Ein solcher Marker dient als eindeutiger Schlüssel, über den sich ein bestimmter Aktor später typsicher abrufen lässt.
+
+Im Anschluss werden weitere Aktoren registriert, die für das Monitoring von Clusterereignissen sowie für die 
+Verarbeitung von Ingress- und Shard-bezogenen Ereignissen zuständig sind. Auf diese Weise wird die Beobachtung 
+und Verwaltung relevanter Clusterzustände dezentral über spezialisierte Listener-Aktoren umgesetzt.
+
+Die Methode \texttt{resolver.Props<T>()} ist eine Erweiterung von Akka.Hosting und ermöglicht die Erstellung 
+von Aktoren unter Nutzung der Dependency Injection. Mit \texttt{system.ActorOf(...)} wird der jeweilige Aktor 
+schließlich instanziert und dem ActorSystem hinzugefügt.
+
+Über \texttt{registry.Register<T>()} wird der erzeugte Aktor anschließend im internen Registry-System von 
+Akka.Hosting hinterlegt, damit er später von anderen Diensten oder Modulen abgerufen werden kann.
+
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Koordinator-Konfiguration}
+\label{prog:hocon-hosting-coordinator}
+\begin{CsCode}
+private static void RegisterCoordinator(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
+{
+    string role = ClusterMemberRoles.Controller.ToStr();
+
+    config.WithSingleton<ClusterCoordinatorMarker>(
+            singletonName: role,
+            propsFactory: (_, _, resolver) => resolver.Props<ClusterCoordinator>(),
+            options: new ClusterSingletonOptions { Role = akkaHc.Role })
+        .WithActors((system, registry, resolver) =>
+        {
+            var controller = registry.Get<ClusterCoordinatorMarker>();
+
+            registry.Register<ClusterEventListener>(
+                system.ActorOf(resolver.Props<ClusterEventListener>(),
+                    "cluster-event-listener"));
+
+            registry.Register<IngressListener>(
+                system.ActorOf(resolver.Props<IngressListener>(controller),
+                    "ingress-listener"));
+
+            registry.Register<ShardListener>(
+                system.ActorOf(resolver.Props<ShardListener>(controller),
+                    "shard-listener"));
+        });
+}
+\end{CsCode}
+\end{program}
+
+\subsubsection*{Akka.Hosting Backend-Initialisierung}
+
+Die \textit{Backend}-Rolle stellt das Herzstück der verteilten Datenverarbeitung dar, da sie die
+\texttt{ShardRegion} hostet, in der die einzelnen Fahrerdaten als zustandsbehaftete Entitäten
+repräsentiert und verarbeitet werden. Programm~\ref{prog:hocon-hosting-backend} zeigt einen
+ausgewählten Ausschnitt der Konfiguration dieser Rolle.
+
+Für die ShardRegion wird die \textit{DistributedData}-Variante des Shardings verwendet.
+Hierbei werden die internen Sharding-Metadaten, insbesondere die Zuordnung von Entitäten zu Shards
+sowie der aktuelle Aktivierungszustand der Entitäten, über das Modul
+\texttt{Akka.DistributedData} repliziert. Dies erhöht die Ausfallsicherheit, da bei einem Knotenverlust
+die übrigen Clusterknoten weiterhin einen konsistenten Überblick über die Shard-Verteilung behalten.
+Der eigentliche fachliche Zustand der Fahrerdaten wird hingegen durch die persistenten Entitätsaktoren
+(\texttt{DriverActorPersistent}) verwaltet und über Akka.Persistence im Journal gespeichert.
+
+Zu Beginn werden die Optionen für das verteilte Sharding konfiguriert. Parameter wie
+\texttt{MajorityMinimumCapacity} legen fest, wie viele Clusterknoten für eine Mehrheitsentscheidung
+innerhalb von DistributedData erforderlich sind, während \texttt{MaxDeltaElements} bestimmt, wie
+umfangreich die über Gossip propagierten Delta-States sein dürfen. Diese Einstellungen beeinflussen das
+Verhalten der Replikation insbesondere bei wachsender Anzahl von Entitäten.
+
+Im Anschluss wird die eigentliche ShardRegion registriert. Ein zugehöriger \textit{Marker}
+(\texttt{DriverRegionMarker}) ermöglicht den späteren Zugriff über die Dependency-Injection-Pipeline.
+Die Entitäten innerhalb der ShardRegion werden als persistent implementierte Aktoren des Typs
+\texttt{DriverActorPersistent} ausgeführt. Ein \texttt{MessageExtractor}
+(\texttt{DriverMessageExtractor}) ordnet eingehende Nachrichten sowohl den Shards als auch den einzelnen
+Entitäten zu und übernimmt damit eine zentrale Rolle in der Lastverteilung.
+
+Zusätzlich werden Optionen wie die automatische Passivierung inaktiver Entitäten sowie die Nutzung des
+DistributedData-Modus als Speichermechanismus für Sharding-Metadaten konfiguriert. Mit
+\texttt{RememberEntities = true} wird sichergestellt, dass Entitäten nach einem Neustart oder einem
+Rebalancing automatisch wieder aktiviert werden.
+
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Backend-Konfiguration}
+\label{prog:hocon-hosting-backend}
+\begin{CsCode}
+private static void RegisterShardRegion(this AkkaConfigurationBuilder config, AkkaConfig akkaHc, IMessageExtractor? ex = null)
+{
+    string role = ClusterMemberRoles.Backend.ToStr();
+
+    var extractor = ex ?? new DriverMessageExtractor();
+
+    config.WithShardingDistributedData(options =>
+        {
+            options.RecreateOnFailure = true;
+            options.MajorityMinimumCapacity = 2;
+            options.MaxDeltaElements = 2000;
+            options.Durable.Keys = [];
+        })
+        .WithShardRegion<DriverRegionMarker>(
+            typeName: akkaHc.ShardName,
+            entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActorPersistent>(),
+            messageExtractor: extractor,
+            shardOptions: new ShardOptions
+            {
+                Role = role,
+                PassivateIdleEntityAfter = TimeSpan.FromMinutes(5),
+                StateStoreMode = StateStoreMode.DData,
+                RememberEntities = true
+            })
+        .WithActors((system, registry, resolver) =>
+            registry.Register<TelemetryRegionHandler>(
+                system.ActorOf(resolver.Props<TelemetryRegionHandler>(),
+                    "telemetry-region-handler")));
+}
 \end{CsCode}
 \end{program}
 
 
+\subsubsection*{Akka.Hosting Ingress-Initialisierung}
+
+Die \textit{Ingress}-Rolle ist für den Empfang und die Vorverarbeitung der eingehenden Fahrerdaten
+zuständig. Programm~\ref{prog:hocon-hosting-ingress} zeigt einen Ausschnitt der Konfiguration dieser Rolle.
+
+Zunächst wird für die HTTP-Kommunikation mit dem Server ein Singleton-Aktor des Typs 
+\texttt{IngressHttpActor} registriert. Dieser Aktor stellt beim Start eine Verbindung zum Cloud-Server her 
+und übernimmt den Empfang der eingehenden Datenströme.
+
+Anschließend wird ein ShardRegion-Proxy für die Kommunikation mit der \texttt{ShardRegion} erstellt. 
+Hierzu wird ein Marker (\texttt{DriverRegionProxyMarker}) verwendet, über den der Proxy später über die 
+Dependency-Injection-Pipeline referenziert werden kann. Der Proxy ermöglicht es den Ingress-Komponenten, 
+Nachrichten an die tatsächliche ShardRegion zu senden, ohne direkt an deren physische Instanz gebunden zu sein. 
+Dies fördert eine lose Kopplung zwischen Ingress und Backend.
+
+Zusätzlich wird ein \texttt{IngressControllerActor} registriert, der als zentrale Steuerungskomponente 
+für die Ingress-Logik dient und die weitere Verarbeitung der eingehenden Daten innerhalb des Aktorensystems koordiniert.
+
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Ingress-Konfiguration}
+\label{prog:hocon-hosting-ingress}
+\begin{CsCode}
+private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaConfig akkaHc)
+{
+    string role = ClusterMemberRoles.Ingress.ToStr();
+    config
+        .WithSingleton<HttpWrapperClientMarker>(
+            singletonName: role,
+            propsFactory: (_, _, resolver) => resolver.Props<IngressHttpActor>(),
+            options: new ClusterSingletonOptions {Role = akkaHc.Role})
+        .WithShardRegionProxy<DriverRegionProxyMarker>(
+            typeName: akkaHc.ShardName,
+            roleName: ClusterMemberRoles.Backend.ToStr(),
+            messageExtractor: new DriverMessageExtractor())
+        .WithActors((system, registry, resolver) =>
+        {
+            registry.Register<IngressControllerActor>(
+                system.ActorOf(resolver.Props<IngressControllerActor>(),
+                    "controller-handler"));
+        });
+}
+\end{CsCode}
+\end{program}
+
+\subsubsection*{Akka.Hosting Generelle Remote und Cluster Konfiguration}
+
+Damit ein AktorSystem als Clusterknoten mit anderen Systemen kommunizieren kann, müssen Remoting und 
+Clustering konfiguriert werden. Programm~\ref{prog:hocon-hosting-remote} zeigt eine eigene 
+Erweiterungsmethode, die diese Konfiguration bündelt und von allen Rollen gemeinsam genutzt wird. 
+
+Zunächst werden Hostname und Port für das Remote-Modul gesetzt, sodass der Knoten über TCP erreichbar ist. 
+Anschließend werden die Clusteroptionen konfiguriert. Dazu gehören die Rollen des Knotens sowie die Seed Nodes, 
+über die der Cluster initial aufgebaut wird. Je nach Startkonfiguration wird entweder die vollständige Seed-Liste 
+oder nur der erste Seed Node verwendet, um eine stabile Initialisierung zu gewährleisten.
+
+Für die spätere Nachrichtenverteilung zwischen unabhängigen Aktoren wird außerdem der 
+\textit{DistributedPubSub}-Mediator aktiviert. Dieser ermöglicht eine publish/subscribe-basierte Kommunikation, 
+ohne dass Sender und Empfänger direkt voneinander wissen müssen. Dies fördert eine lose Kopplung innerhalb des Systems.
+
+Abschließend werden Parameter wie die maximale Nachrichtengröße und die Puffergrößen 
+für die TCP-Kommunikation definiert. Diese Einstellungen sind insbesondere bei der Übertragung größerer 
+Datenmengen relevant und tragen zur Stabilität und Effizienz der Clusterkommunikation bei.
+
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Remote-Cluster-Konfiguration}
+\label{prog:hocon-hosting-remote}
+\begin{CsCode}
+public static AkkaConfigurationBuilder UseRemoteCluster(this AkkaConfigurationBuilder builder, AkkaConfig config)
+{
+    builder
+        .WithRemoting(
+            port: config.Port,
+            hostname: config.Hostname)
+        .WithClustering(
+            new ClusterOptions
+            {
+                SeedNodes = config.Roles.Count == 1 ? config.SeedNodes : [config.SeedNodes.First()],
+                Roles = config.Roles.ToArray()
+            })
+        .WithDistributedPubSub(role: null!)
+        .AddHocon("""
+                      akka.remote.dot-netty.tcp {
+                        maximum-frame-size  = 2 MiB
+                        send-buffer-size    = 2 MiB
+                        receive-buffer-size = 2 MiB
+                      }
+                      """, HoconAddMode.Append);
+
+    return builder;
+}
+
+\end{CsCode}
+\end{program}
+
+\subsubsection*{Akka.Hosting Persistenzkonfiguration}
+
+Die Persistenz ist ein zentraler Bestandteil der Backend-Rolle, da der Zustand der Fahrerdaten dauerhaft 
+gesichert werden muss.Programm~\ref{prog:hocon-hosting-journal} zeigt die Einbindung der 
+Persistence-Komponenten in das Aktorensystem mithilfe von Akka.Hosting.
+
+Die Implementierung unterstützt zwei Betriebsmodi.
+Zum einen wird eine In-Memory-Persistenz für Testläufe verwendet, die ein schnelles und reproduzierbares 
+Verhalten ohne externe Abhängigkeiten ermöglicht.Zum anderen kommt im produktiven Betrieb eine PostgreSQL-basierte 
+Persistenz zum Einsatz. Dadurch kann der Zustand der Fahrerdaten auch über Neustarts hinweg konsistent wiederhergestellt werden.
+
+Für den Datenbankzugriff wird Npgsql eingesetzt. Über \texttt{WithSqlPersistence} wird Akka.Persistence.Sql in das 
+System integriert und automatisch mit den erforderlichen Journal- und Snapshot-Schemata initialisiert.
+Die In-Memory-Variante wird automatisch aktiv, wenn keine gültige Datenbankverbindung konfiguriert wurde, 
+wodurch die Backend-Rolle flexibel in unterschiedlichen Umgebungen betrieben werden kann.
 
 
-Hier gehört rein:
-HOCON-Konfiguration (Rollen, Ports, Seeds, Clustering)
-ActorSystem-Initialisierung
-Sharding-Konfiguration (EntityID, ShardID, Extractors)
-Singleton-Konfiguration
-DI-Setup via Akka.Hosting (wenn du Hosting nutzt)
+\begin{program}[H]
+\caption{Auszug aus der Akka.Hosting-Journal-Konfiguration}
+\label{prog:hocon-hosting-journal}
+\begin{CsCode}
+private static void RegisterBackendJournal(this AkkaConfigurationBuilder config, string connectionString)
+{
+    string dbName = "driverRegion";
+
+    if (connectionString is "")
+    {
+        config.WithInMemoryJournal(journalId: dbName, journalBuilder: _ => { });
+        config.WithInMemorySnapshotStore(dbName);
+        return;
+    }
+    
+    var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
+
+    var dataOptions = new DataOptions()
+        .UseDataProvider(
+            DataConnection.GetDataProvider(
+                ProviderName.PostgreSQL,
+                dataSource.ConnectionString) ?? throw new Exception("Could not get data provider"))
+        .UseProvider(ProviderName.PostgreSQL)
+        .UseConnectionFactory(_ => dataSource.CreateConnection());
+
+    config.WithSqlPersistence(dataOptions, autoInitialize: true, schemaName: "public");
+
+    config.AddStartup((sys, ct) =>
+    {
+        var c = sys.Settings.Config;
+        sys.Log.Info("Journal={0}, Snapshot={1}",
+            c.GetString("akka.persistence.journal.plugin"),
+            c.GetString("akka.persistence.snapshot-store.plugin"));
+
+        sys.RegisterOnTermination(() => dataSource.Dispose());
+        return Task.CompletedTask;
+    });
+}
+
+\end{CsCode}
+\end{program}
 
 \section{Eingangs-Service}
 
