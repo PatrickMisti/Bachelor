@@ -17,11 +17,19 @@ public class IngressWorkerActor : ReceiveActor
         Receive<StreamInit>(_ => Sender.Tell(StreamAck.Instance));
         Receive<StreamCompleted>(_ => Context.Stop(Self));
 
-        Receive<IOpenF1Dto>(msg =>
+        ReceiveAsync<IOpenF1Dto>(async msg =>
         {
             try
             {
-                switch (msg)
+                var message = msg switch
+                {
+                    IntervalDriverDto d => proxy.Ask<Status>(d.ToMap()),
+                    PersonalDriverDataDto d => proxy.Ask<Status>(d.ToMap()),
+                    PositionOnTrackDto d => proxy.Ask<Status>(d.ToMap()),
+                    TelemetryDateDto d => proxy.Ask<Status>(d.ToMap()),
+                    _ => null
+                };
+                /*switch (msg)
                 {
                     case IntervalDriverDto d:
                         proxy.Forward(d.ToMap());
@@ -38,9 +46,22 @@ public class IngressWorkerActor : ReceiveActor
                     default:
                         _log.Warning($"Message was no IOpenF1Dto message {msg.GetType()}");
                         break;
+                }*/
+
+                if (message == null)
+                {
+                    _log.Warning($"Message was no IOpenF1Dto message {msg.GetType()}");
+                    // Ack for backpressure
+                    Sender.Tell(StreamAck.Instance);
+                    return;
                 }
 
                 _log.Debug($"Forwarding message {msg.GetType()} to proxy");
+                Task.WaitAll(message);
+                var result = await message;
+
+                if (result is Status.Success)
+                    _log.Debug("Send update to shard region");
 
                 // Ack for backpressure
                 Sender.Tell(StreamAck.Instance);

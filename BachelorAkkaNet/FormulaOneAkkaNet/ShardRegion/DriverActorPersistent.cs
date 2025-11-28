@@ -41,7 +41,7 @@ public class DriverActorPersistent : ReceivePersistentActor
                 {
                     _state.Apply(evt);
                     _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
-                    Sender.Tell(CreatedDriverMessage.Success(_state.Key));
+                    Sender.Tell(new Status.Success(CreatedDriverMessage.Success(_state.Key)));
                     // Optional: Idle-Passivation
                     //Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));
                     // Become delete before receives
@@ -175,6 +175,7 @@ public class DriverActorPersistent : ReceivePersistentActor
             SendToHandler();
             CreateSnapshot();
         });
+        Sender.Tell(new Status.Success(element));
     }
 
     private bool KeysMatchOrFail(DriverKey key)

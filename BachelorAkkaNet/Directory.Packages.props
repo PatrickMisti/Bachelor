@@ -18,7 +18,10 @@
     <PackageVersion Include="Akka.Logger.Serilog" Version="1.5.25" />
     <PackageVersion Include="Akka.Streams.TestKit" Version="1.5.54" />
     <PackageVersion Include="Akka.TestKit.Xunit2" Version="1.5.54" />
+    <PackageVersion Include="CsvHelper" Version="33.1.0" />
+    <PackageVersion Include="Microsoft.AspNet.SignalR" Version="2.4.3" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
