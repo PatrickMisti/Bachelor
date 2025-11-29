@@ -741,16 +741,91 @@ Fahrermanagement im Cluster.
 
 \section{Nachrichtenverteilung im Cluster}
 
-///////////////////////////////////////////////////////////
-Distributed PubSub
-Distributed PubSub:
+Um bei einer losen Kopplung Nachrichten zwischen Aktoren auszutauschen, wird der \texttt{DistributedPubSub}-Mediator verwendet. 
+Dadurch können Aktoren Nachrichten versenden und empfangen, ohne direkte Referenzen aufeinander zu besitzen.
 
-Einrichtung des DistributedPubSub-Mediators
-Subscription der Konsumenten
-Publish von Events
-Verwendung von Topics
-Vorteile für lose Kopplung
-///////////////////////////////////////////////////////////
+\subsection{Mediator: Nachrichtenempfänger}
+
+Damit ein Aktor Nachrichten über den Mediator empfangen kann, muss er sich mit einem bestimmten Topic beim 
+\texttt{DistributedPubSub}-Mediator registrieren. Zur Vereinheitlichung wurde hierfür eine Basisklasse 
+implementiert, die die Anmeldung beim Mediator übernimmt. Alle Aktoren, die Nachrichten über ein Topic 
+empfangen sollen, erben von dieser Basisklasse.
+
+Während der Anmeldephase werden eingehende Nachrichten zunächst gestasht, bis alle erwarteten Bestätigungen 
+(\texttt{SubscribeAck}) eingetroffen sind. Erst danach wird das eigentliche Verhalten des Aktors aktiviert 
+und die gestashten Nachrichten werden verarbeitet. Um zusätzlich Gruppenkommunikation zu unterstützen, 
+erfolgt neben der Anmeldung am Topic eine weitere Anmeldung mit einer generierten Gruppen-ID. Dadurch können 
+mehrere Aktoren dieselben Nachrichten erhalten, wenn sie mit derselben Gruppen-ID registriert sind.
+
+\begin{program}[H]
+\caption{Auszug aus der Basisklasse für PubSub-Empfänger}
+\begin{CsCode}
+protected override void PreStart()
+{
+    _pubSubActorRef = DistributedPubSub.Get(Context.System).Mediator;
+    if (_pubSubActorRef.IsNobody())
+        throw new ActorNotFoundException("Mediator not connected!");
+
+    _member = PubSubTypeMapping.ToMember(typeof(TTopic)) ?? PubSubMember.All;
+    _logger.Info(\$"Mediator is trying to connected to topic {_member.ToStr()}");
+
+    _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
+    _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
+}
+\end{CsCode}
+\end{program}
+
+Nach der Anmeldung wird auf die Bestätigung durch den Mediator gewartet. Solange diese Bestätigung noch nicht 
+eingetroffen ist, werden alle Nachrichten gestasht. Sobald die erwartete Anzahl an \texttt{SubscribeAck}-Nachrichten 
+empfangen wurde, werden alle gesammelten Nachrichten entstapelt und das eigentliche Verhalten des Aktors aktiviert.
+
+\begin{program}[H]
+\caption{Auszug aus der Basisklasse für PubSub-Empfänger}
+\begin{CsCode}
+private void HandleAckSub()
+{
+    Receive<SubscribeAck>(msg =>
+    {
+        _logger.Info(\$"Grab Ack for {msg.Subscribe.Topic} with group ({msg.Subscribe.Group})");
+
+        Become(() =>
+        {
+            Activated();
+            Stash.UnstashAll();
+        });
+    });
+
+    ReceiveAny(_ => Stash.Stash());
+}
+\end{CsCode}
+\end{program}
+
+\subsection{Mediator: Nachrichtensender}
+
+Zum Versenden von Nachrichten wird der \texttt{DistributedPubSub}-Mediator referenziert und über eine 
+\texttt{Publish}-Nachricht ein bestimmtes Topic adressiert. 
+Um sicherzustellen, dass Nachrichten stets mit einem konsistenten und korrekt definierten Topic gesendet werden, 
+wurden mehrere typisierte Zugriffsmethoden definiert.
+
+Diese Methoden (\texttt{Api}, \texttt{Backend}, \texttt{Ingress}, \texttt{Controller}) stellen jeweils einen 
+vordefinierten logischen Kommunikationskanal bereit. 
+Anstatt frei formulierte Topic-Strings zu verwenden, wird das jeweils zugehörige Topic intern über die 
+Zuordnung des entsprechenden Mitglieds bestimmt und anschließend über den Mediator veröffentlicht.
+
+Auf diese Weise entsteht eine string-freie und fehlerresistente Mechanik zur Nachrichtenverteilung, 
+die sowohl eine lose Kopplung der Aktoren als auch eine einheitliche Struktur der verwendeten Topics im gesamten 
+System sicherstellt.
+
+Programm~\ref{prog:Erweiterungsmethode Mediator} zeigt exemplarisch die Verwendung dieser Methoden.
+
+\begin{program}[H]
+\caption{Auszug aus der Erweiterungsmethode für PubSub-Sender}
+\label{prog:Erweiterungsmethode Mediator}
+\begin{CsCode}
+Context.PubSub().Api.Publish(new NotifyDriverStateMessage(msg.Key, msg.State));
+Context.PubSub().Backend.Publish(new NotifyDriverStateMessage(msg.Key, msg.State));
+\end{CsCode}
+\end{program}
 
 \section{Cluster-Steuerung und Fehlertoleranz}
 Hier erklärst du:
