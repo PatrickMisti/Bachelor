@@ -200,7 +200,6 @@ public class DriverActorPersistent : ReceivePersistentActor
             _logger.Debug("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
             SaveSnapshot(_state.CopyState());
         }
-            
     }
 
     private void SendToHandler() => 

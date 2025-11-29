@@ -549,15 +549,199 @@ Materialization
 
 \section{Verarbeitung in der ShardRegion}
 
-(„Datenbefüllung der ShardRegion mit Arbeiteraktoren“ ist ok, aber zu eng → besser allgemein formulieren)
-Worker-/Driver-Actor
-State-Management (telemetry state, sektoren, pace)
-Event Verarbeitung
-Persistence / Snapshots (falls vorhanden)
-Lebenszyklus der Entitäten (Passivation, Shard-Migration)
+Der \texttt{DriverActorPersistent} bildet die zentrale Komponente zur konsistenten Verwaltung des Zustands eines einzelnen 
+Fahrers innerhalb einer \texttt{ShardRegion}.Durch die Ableitung von \texttt{ReceivePersistentActor} besitzt er die Fähigkeit, 
+Zustandsänderungen als Ereignisse (Events) dauerhaft zu persistieren. Diese Persistenzmechanismen ermöglichen es dem Aktor, 
+seinen vollständigen Zustand bei einem Neustart, einem Ausfall einzelner Clusterknoten oder einem Rebalancing des Clusters 
+zuverlässig wiederherzustellen.
+
+\subsection{Konstruktor und Wiederherstellung}
+
+Zu Beginn der Aktorinitialisierung werden mithilfe der Methode \texttt{RecoverState} alle zuvor gespeicherten Snapshots sowie 
+die nach dem letzten Snapshot aufgetretenen Ereignisse geladen. Dies gewährleistet, dass sich der Zustand des Fahrers auch 
+nach einem Ausfall oder einer Migration innerhalb des Clusters vollständig rekonstruieren lässt.
+
+Ein vorhandener \texttt{SnapshotOffer} stellt dabei den zuletzt gespeicherten Zustandsstand bereit, wohingegen alle 
+nachfolgenden Ereignisse sequentiell erneut angewendet werden, um den Zustand auf den aktuellen Stand zu bringen.
+Der Wiederherstellungsprozess endet mit dem Ereignis \texttt{RecoveryCompleted}. Anschließend wird geprüft, ob der Zustand 
+bereits initialisiert wurde. In diesem Fall wechselt der Aktor in das Verhalten \texttt{Initialized}, andernfalls verbleibt 
+er im Zustand \texttt{Uninitialized}.
+
+\begin{program}[H]
+\caption{Auszug aus dem DriverActorPersistent}
+\begin{CsCode}
+public DriverActorPersistent(IRequiredActor<TelemetryRegionHandler> handler)
+{
+    _handler = handler.ActorRef;
+    _logger.Info(\$"DriverActorPersistent constructor: {Self.Path.Name}");
+    RecoverState();
+
+    Become(Uninitialized);
+}
+
+private void RecoverState()
+{
+    Recover<SnapshotOffer>(offer =>
+    {
+        _logger.Info(\$"SnapshotOffer for {offer.Snapshot}");
+        if (offer.Snapshot is DriverInfoState state)
+        {
+            _state.RestoreFromSnapshot(state);
+            _logger.Info(\$"Recovered snapshot for driver {_state.ToDriverInfoString()}");
+        }
+    });
+
+    Recover<IHasDriverId>(evt =>
+    {
+        _state.Apply(evt);
+        _logger.Info("Replayed {Event} for {Pid}", evt.GetType().Name, PersistenceId);
+    });
+
+    Recover<RecoveryCompleted>(_ =>
+    {
+        if (_state.IsInitialized) Become(Initialized);
+    });
+}
+
+\end{CsCode}
+\end{program}
+
+\subsection{Initialisierung des Aktors}
+
+Solange der Aktor noch nicht initialisiert wurde, befindet er sich im Verhalten \texttt{Uninitialized}.Dieser Zustand wird 
+im Konstruktor über \texttt{Become(Uninitialized)} aktiviert. Die Methode \texttt{Become} ersetzt sämtliche bisher 
+registrierten Nachrichtenhandler und ermöglicht damit ein dynamisches, zustandsabhängiges Verhalten des Aktors.
+
+Erst wenn der Aktor eine \texttt{CreateModelDriverMessage} empfängt, wird diese persistiert, auf den internen Zustand 
+angewendet und damit die Initialisierung abgeschlossen. Nach erfolgreicher Initialisierung wechselt der Aktor in das 
+Verhalten \texttt{Initialized}, in dem er regulär auf weitere fachliche Nachrichten reagieren kann.
+
+Empfängt der Aktor vor Abschluss der Initialisierung eine andere Nachricht, wird er passiviert, um unnötige 
+Ressourcenbelegung zu vermeiden. Dies erfolgt über einen \texttt{CommandAny}-Handler, der nicht behandelte 
+Nachrichten protokolliert und gleichzeitig die Passivierung der Shard-Entity anstößt.
+
+\begin{program}[H]
+\caption{Auszug aus dem DriverActorPersistent}
+\begin{CsCode}
+private void Uninitialized()
+{
+    Command<CreateModelDriverMessage>(m =>
+    {
+        Persist(m, evt =>
+        {
+
+            try
+            {
+                _state.Apply(evt);
+                _logger.Info(\$"Initialized driver {_state.ToDriverInfoString()})");
+                Sender.Tell(new Status.Success(CreatedDriverMessage.Success(_state.Key)));
+                Become(Initialized);
+            }
+            catch (ArgumentNullException ex)
+            {
+                _logger.Error(ex, "Failed to initialize driver with message: {Message}", m);
+                Sender.Tell(new Status.Failure(ex));
+                Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage(ex.Message));
+            }
+        });
+    });
+
+    Command<StopEntity>(_ => Context.Stop(Self));
+
+    CommandAny(msg =>
+    {
+        var entityId = Self.Path.Name;
+        _logger.Warning(\$"Received {msg.GetType().Name} before initialization for entity {entityId}. Passivating.");
+
+        Sender.Tell(new NotInitializedMessage(entityId));
+        Context.Parent.Tell(new Passivate(new StopEntity()));
+        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage("DriverActor was not init"));
+    });   
+}
+\end{CsCode}
+\end{program}
+
+\subsection{Initialisierter DriverActorPersistent}
+
+Nach erfolgter Initialisierung wechselt der Aktor in das Verhalten \texttt{Initialized}. In diesem Zustand reagiert er 
+auf verschiedene fachliche Nachrichten, insbesondere auf Änderungen im Fahrerzustand. Jede Änderung wird über die 
+Methode \texttt{PersistAndApply} verarbeitet, die die empfangene Nachricht persistiert, auf den internen Zustand anwendet 
+und anschließend die aktualisierten Informationen an den \texttt{TelemetryRegionHandler} weiterleitet.
+Dies stellt sicher, dass alle nachgelagerten Komponenten jederzeit über den aktuellen Zustand des Fahrers verfügen.
+
+\begin{program}[H]
+\caption{Auszug aus dem DriverActorPersistent}
+\begin{CsCode}
+private void Initialized()
+{
+    Command<UpdateTelemetryMessage>(m =>
+    {
+        _logger.Debug("Telemetry: {Id} speed={Speed} t={Ts:o}", _state.Key, m.Speed, m.TimestampUtc);
+        PersistAndApply(m);
+    });
+
+    // weitere Handler ausgelassen
+}
+
+private void PersistAndApply(IHasDriverId element) 
+{
+    if (!_state.IsInitialized || !KeysMatchOrFail(element.Key))
+    {
+        Sender.Tell(
+            new Status.Failure(
+                new DriverInShardNotFoundException(element.Key, \$"Key is not {_state.Key} or initialized")));
+
+        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage(\$"Key is not {_state.Key} or initialized"));
+        return;
+    }
+
+    Persist(element, ev =>
+    {
+        _state.Apply(ev);
+        SendToHandler();
+        CreateSnapshot();
+    });
+    Sender.Tell(new Status.Success(element));
+}
+\end{CsCode}
+\end{program}
+
+\subsection{Persistierung des Zustands}
+
+Damit der Wiederherstellungsprozess effizient bleibt, erzeugt der Aktor in regelmäßigen Abständen einen Snapshot seines 
+aktuellen Zustands. Die Methode \texttt{CreateSnapshot} überprüft dazu, ob die aktuelle Sequenznummer ein Vielfaches von 
+zehn ist. Nur in diesem Fall wird ein Snapshot erzeugt und gespeichert. Dieses Verfahren reduziert die Anzahl der beim 
+Recovery zu verarbeitenden Ereignisse und führt damit zu einer schnelleren Wiederherstellung, ohne bei jeder einzelnen 
+Zustandsänderung einen Snapshot zu erzeugen.
+
+\begin{program}[H]
+\caption{Auszug aus dem DriverActorPersistent}
+\begin{CsCode}
+private void CreateSnapshot()
+{
+    if (LastSequenceNr % 10 == 0)
+    {
+        _logger.Debug("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
+        SaveSnapshot(_state.CopyState());
+    }
+}
+\end{CsCode}
+\end{program}
+
+\subsection*{Zusammenfassung}
+
+Der \texttt{DriverActorPersistent} kombiniert persistente Ereignisverarbeitung mit einem klar strukturierten, 
+zustandsabhängigen Aktormodell innerhalb einer \texttt{ShardRegion}. Während des Recoverys werden sowohl Snapshots als 
+auch alle nachfolgenden Ereignisse rekonstruiert, wodurch ein konsistenter Fahrerzustand auch nach Ausfällen oder 
+Rebalancing gewährleistet wird. Durch das Wechseln zwischen den Zuständen \texttt{Uninitialized} und \texttt{Initialized} 
+wird sichergestellt, dass nur vollständig initialisierte Entities fachliche Nachrichten verarbeiten. Alle Zustandsänderungen 
+werden über \texttt{PersistAndApply} als Ereignisse gespeichert und optional mittels periodischer Snapshots ergänzt. Damit 
+erfüllt der Aktor die Anforderungen an ein fehlertolerantes, verteiltes und deterministisch rekonstruierbares 
+Fahrermanagement im Cluster.
 
 \section{Nachrichtenverteilung im Cluster}
 
+///////////////////////////////////////////////////////////
 Distributed PubSub
 Distributed PubSub:
 
@@ -566,6 +750,7 @@ Subscription der Konsumenten
 Publish von Events
 Verwendung von Topics
 Vorteile für lose Kopplung
+///////////////////////////////////////////////////////////
 
 \section{Cluster-Steuerung und Fehlertoleranz}
 Hier erklärst du:
