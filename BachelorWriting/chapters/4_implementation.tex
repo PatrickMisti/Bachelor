@@ -728,6 +728,18 @@ private void CreateSnapshot()
 \end{CsCode}
 \end{program}
 
+\subsection{Shard-Zuordnung und Rebalancing}
+
+Die Zuordnung eingehender Nachrichten zu den jeweiligen Shards und Entitäten erfolgt über den \texttt{DriverMessageExtractor}, 
+der sowohl die Entitäts-ID als auch die Shard-ID aus einer Nachricht ableitet. Dies geschieht über den Standardmechanismus von 
+\texttt{Akka.Cluster.Sharding}, der auf dem \texttt{HashCodeMessageExtractor} basiert. Die Shard-Zuordnung ergibt sich dabei 
+aus einer Hashfunktion, die von Akka.NET bereitgestellt wird und eine gleichmäßige Verteilung der Entitäten über alle verfügbaren 
+Clusterknoten anstrebt.
+
+Eine eigene Rebalancing-Strategie wurde nicht implementiert, da die Standardstrategie von \texttt{Akka.Cluster.Sharding} bereits 
+eine effiziente Lastverteilung sicherstellt. Sie verschiebt Shards automatisch, sobald neue Clusterknoten hinzukommen oder 
+bestehende Knoten ausfallen, und ermöglicht somit eine robuste Wiederherstellung der Systembalance ohne zusätzlichen Implementierungsaufwand.
+
 \subsection*{Zusammenfassung}
 
 Der \texttt{DriverActorPersistent} kombiniert persistente Ereignisverarbeitung mit einem klar strukturierten, 
@@ -828,6 +840,108 @@ Context.PubSub().Backend.Publish(new NotifyDriverStateMessage(msg.Key, msg.State
 \end{program}
 
 \section{Cluster-Steuerung und Fehlertoleranz}
+
+\subsection{ClusterCoordinator}
+
+\begin{program}[H]
+\caption{Auszug aus dem ClusterCoordinator}
+\begin{CsCode}
+Receive<ShardConnectionUpdateMessage>(msg =>
+{
+    _hasShardRegion = msg.IsShardOnline;
+    var con = _hasShardRegion ? "connected" : "disconnected";
+    _logger.Debug(\$"Shard connection changed. Shard {con}");
+    _ingressListener.Tell(new IngressConnectionCanActivated(_hasShardRegion));
+});
+
+ReceiveAsync<IngressConnectivityRequest>(async _ =>
+{
+    if (!_hasShardRegion)
+    {
+        var res = await _shardListener
+            .Ask<ShardConnectionUpdateMessage>(ShardConnectionRequest.Instance);
+        _hasShardRegion = res.IsShardOnline;
+    }
+
+    _logger.Debug(\$"Ingress activate request. Shard active: {_hasShardRegion}");
+    Sender.Tell(new IngressConnectivityResponse(_hasShardRegion));
+});
+\end{CsCode}
+\end{program}
+
+\subsection{ShardListener: Verfügbarkeit der ShardRegion}
+
+\begin{program}[H]
+\caption{Auszug aus dem ShardListener}
+\begin{CsCode}
+Receive<IncreaseClusterMember>(msg =>
+{
+    Logger.Debug("Increase counter");
+    _activeBackends.Add(msg.ClusterMemberRef);
+    SendCountUpdate(new ShardConnectionUpdateMessage(_activeBackends.Count > 0));
+});
+
+Receive<DecreaseClusterMember>(msg =>
+{
+    Logger.Debug("Decrease counter");
+    _activeBackends.Remove(msg.ClusterMemberRef);
+    SendCountUpdate(new ShardConnectionUpdateMessage(_activeBackends.Count > 0));
+});
+
+Receive<ShardCountRequest>(_ =>
+    Sender.Tell(new ShardCountResponse(_activeBackends.Count)));
+\end{CsCode}
+\end{program}
+
+\subsection{IngressListener: Benachrichtigung der Ingress-Knoten}
+
+\begin{program}[H]
+\caption{Auszug aus dem IngressListener}
+\begin{CsCode}
+Receive<IngressConnectionCanActivated>(msg =>
+{
+    var isOnline = msg.IsShardOnline ? "online" : "offline";
+    Logger.Debug(\$"Auto send to shard is {isOnline} and ingress will be notified!");
+    Context.PubSub().Ingress.Publish(
+        new NotifyIngressShardIsOnline(msg.IsShardOnline));
+});
+
+Receive<IncreaseClusterMember>(msg =>
+{
+    Logger.Debug("Increase counter");
+    _activeIngress.Add(msg.ClusterMemberRef);
+    SendCountUpdate(new IngressConnectionUpdateMessage(_activeIngress.Count > 0));
+});
+\end{CsCode}
+\end{program}
+
+\subsection{ClusterEventListener: Verarbeitung von Cluster-Events}
+
+
+
+\begin{program}[H]
+\caption{Auszug aus dem ClusterEventListener}
+\begin{CsCode}
+Receive<ClusterEvent.MemberUp>(u =>
+{
+    _logger.Info(\$"Cluster Member is Up {u}, {string.Join(',', u.Member.Roles)}");
+    foreach (var s in u.Member.Roles)
+        Broadcast(ClusterMemberExtension.Parse(s),
+                  new IncreaseClusterMember(u.Member.Address));
+});
+
+Receive<ClusterEvent.MemberRemoved>(r =>
+{
+    _logger.Info(\$"Cluster Member is Removed {r}, {string.Join(',', r.Member.Roles)}");
+    foreach (var s in r.Member.Roles)
+        Broadcast(ClusterMemberExtension.Parse(s),
+                  new DecreaseClusterMember(r.Member.Address));
+});
+\end{CsCode}
+\end{program}
+
+
+
 Hier erklärst du:
 Coordinator-Singleton
 Steuerung von ShardRegion-Verfügbarkeit
