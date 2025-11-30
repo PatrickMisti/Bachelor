@@ -21,7 +21,7 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
   }
 }
 
-\label{fi:project-structure}
+\label{fig:project-structure}
 \begin{forest}
   for tree={
     font=\ttfamily,
@@ -108,7 +108,6 @@ SQL-Erweiterungen stellen sicher, dass zustandsbehaftete Entitäten konsistent w
 wird für die kontrollierte Verarbeitung der Datenströme eingesetzt. Mit den Hosting-Erweiterungen wird eine einheitliche 
 Konfiguration über das .NET-Hostingmodell ermöglicht, wodurch die Initialisierung des Clusters sowie der Persistence-Komponenten 
 vereinfacht wird. Serilog und Npgsql ergänzen die Architektur durch Logging und Datenbankanbindung.
-
 
 \section{Konfiguration und Initialisierung des Clusters}
 
@@ -841,7 +840,25 @@ Context.PubSub().Backend.Publish(new NotifyDriverStateMessage(msg.Key, msg.State
 
 \section{Cluster-Steuerung und Fehlertoleranz}
 
+Die Steuerung der Clusterverfügbarkeit und das Zusammenspiel zwischen ShardRegion und Ingress-Komponenten werden durch 
+eine explizite Koordinationsschicht realisiert. Diese Schicht besteht im Wesentlichen aus dem \texttt{ClusterCoordinator}, 
+dem \texttt{ShardListener}, dem \texttt{IngressListener} sowie einem \texttt{ClusterEventListener}. Ziel ist es, 
+den aktuellen Zustand der relevanten Clusterrollen (Backends und Ingress-Knoten) zu überwachen und darauf aufbauend die 
+Erreichbarkeit der ShardRegion gegenüber dem Ingress-Datenstrom zu steuern.
+
 \subsection{ClusterCoordinator}
+
+Der \texttt{ClusterCoordinator} übernimmt die zentrale Rolle der Zustands- und Verfügbarkeitskoordination zwischen der 
+ShardRegion und den Ingress-Komponenten. Er empfängt Statusmeldungen sowohl vom \texttt{ShardListener} als auch 
+vom \texttt{IngressListener} und verwaltet intern den aktuellen Erreichbarkeitsstatus der ShardRegion. Ändert sich 
+dieser Zustand, benachrichtigt der \texttt{ClusterCoordinator} unmittelbar den \texttt{IngressListener}, damit die Ingress-Knoten 
+ihren Datenfluss entsprechend anpassen können. Dadurch wird sichergestellt, dass Daten nur dann an die ShardRegion 
+gesendet werden, wenn diese tatsächlich verfügbar ist.
+
+Die Ermittlung des Shard-Status erfolgt entweder reaktiv durch eingehende Statusmeldungen oder proaktiv über explizite 
+Statusabfragen. Der \texttt{ClusterCoordinator} selbst ist nicht an der Verarbeitung der Daten beteiligt, sondern fungiert 
+als administrative Instanz, die den Ingress-Komponenten mitteilt, ob eine Weiterleitung von Nachrichten an die ShardRegion 
+zulässig ist. Zusätzlich stellt er Informationen über die derzeit verfügbare Anzahl an Clusterknoten bereit.
 
 \begin{program}[H]
 \caption{Auszug aus dem ClusterCoordinator}
@@ -871,6 +888,18 @@ ReceiveAsync<IngressConnectivityRequest>(async _ =>
 
 \subsection{ShardListener: Verfügbarkeit der ShardRegion}
 
+Der \texttt{ShardListener} ist für die kontinuierliche Überwachung der Backend-Knoten verantwortlich, auf denen die ShardRegion 
+ausgeführt wird. Zu diesem Zweck verwaltet er eine interne Menge aller aktuell aktiven Backend-Adressen. Änderungen in der Zusammensetzung 
+dieser Menge, etwa durch das Hinzukommen oder Wegfallen eines Knotens, werden über die Methode \texttt{SendCountUpdate} an den 
+\texttt{ClusterCoordinator} gemeldet.
+
+Um eine übermäßige Anzahl an Statusmeldungen zu vermeiden, insbesondere bei kurzzeitigen oder rasch aufeinanderfolgenden Clusterereignissen, 
+wird ein Entlastungsmechanismus eingesetzt, der funktional einer Debounce-Strategie entspricht. Dabei werden Statusänderungen nicht sofort 
+nach ihrem Auftreten weitergeleitet, sondern zunächst verzögert gesammelt. Erst wenn innerhalb eines kurzen Zeitfensters keine weiteren 
+Änderungen auftreten, wird eine konsolidierte Aktualisierung an den \texttt{ClusterCoordinator} gesendet. Dies reduziert die 
+Kommunikationslast erheblich und verhindert, dass der \texttt{ClusterCoordinator} mit einer großen Anzahl kurzlebiger Statusmeldungen 
+überflutet wird.
+
 \begin{program}[H]
 \caption{Auszug aus dem ShardListener}
 \begin{CsCode}
@@ -893,7 +922,17 @@ Receive<ShardCountRequest>(_ =>
 \end{CsCode}
 \end{program}
 
-\subsection{IngressListener: Benachrichtigung der Ingress-Knoten}
+\subsection{IngressListener: Verwaltung und Benachrichtigung der Ingress-Knoten}
+
+Der \texttt{IngressListener} übernimmt analog zum \texttt{ShardListener} die Aufgabe, den aktuellen Zustand der Ingress-Knoten 
+zu überwachen und eine konsistente Sicht auf deren Verfügbarkeit bereitzustellen. Zu diesem Zweck verwaltet er eine interne 
+Menge aller aktiven Ingress-Instanzen und aktualisiert diese basierend auf den vom \texttt{ClusterEventListener} weitergeleiteten 
+Cluster-Ereignissen.
+
+Neben dieser Überwachungsfunktion fungiert der \texttt{IngressListener} zugleich als zentrale Anlaufstelle für Anfragen seitens 
+der Ingress-Knoten. Er beantwortet insbesondere Rückfragen zur aktuellen Erreichbarkeit der \texttt{ShardRegion} und dient somit 
+als Vermittler zwischen Ingress-Schicht und Backend-Struktur. Änderungen im Status der \texttt{ShardRegion} werden unmittelbar 
+per Publish-Subscribe an alle registrierten Ingress-Knoten weitergegeben, um deren Sendeverhalten entsprechend zu steuern.
 
 \begin{program}[H]
 \caption{Auszug aus dem IngressListener}
@@ -902,8 +941,7 @@ Receive<IngressConnectionCanActivated>(msg =>
 {
     var isOnline = msg.IsShardOnline ? "online" : "offline";
     Logger.Debug(\$"Auto send to shard is {isOnline} and ingress will be notified!");
-    Context.PubSub().Ingress.Publish(
-        new NotifyIngressShardIsOnline(msg.IsShardOnline));
+    Context.PubSub().Ingress.Publish(new NotifyIngressShardIsOnline(msg.IsShardOnline));
 });
 
 Receive<IncreaseClusterMember>(msg =>
@@ -915,9 +953,17 @@ Receive<IncreaseClusterMember>(msg =>
 \end{CsCode}
 \end{program}
 
-\subsection{ClusterEventListener: Verarbeitung von Cluster-Events}
+\subsection{ClusterEventListener: Verarbeitung und Weiterleitung von Cluster-Events}
 
+Der \texttt{ClusterEventListener} ist unmittelbar an das Cluster-Subsystem angebunden und abonniert zentrale Ereignisse des 
+Cluster-Lifecycles. Hierzu zählen insbesondere \texttt{MemberUp} und \texttt{MemberRemoved}, die das Hinzufügen bzw. Entfernen 
+eines Clusterknotens signalisieren, sowie Erreichbarkeitsänderungen wie \texttt{UnreachableMember} und \texttt{ReachableMember}.
 
+Die eingehenden Ereignisse werden anhand der Rollen des betroffenen Clusterknotens analysiert. Auf dieser Grundlage entscheidet 
+der \texttt{ClusterEventListener}, welcher spezialisierte Listener (z. B. \texttt{ShardListener}, \texttt{IngressListener}) 
+informiert werden muss. Dadurch fungiert der \texttt{ClusterEventListener} als zentrale Verteilerinstanz, die Cluster-Statusänderungen 
+effizient an die jeweils relevanten Systemkomponenten weiterleitet. Die Zuordnung erfolgt über die Rollen des jeweiligen Knotens, 
+die zur Klassifizierung seiner Funktion im Cluster dienen.
 
 \begin{program}[H]
 \caption{Auszug aus dem ClusterEventListener}
@@ -940,15 +986,24 @@ Receive<ClusterEvent.MemberRemoved>(r =>
 \end{CsCode}
 \end{program}
 
+\subsection{Fehlertoleranzkonzept der Koordinationsschicht}
 
+Die Koordinationsschicht ist darauf ausgelegt, automatisch auf Änderungen im Clusterzustand zu reagieren und dadurch die Erreichbarkeit der 
+ShardRegion zuverlässig zu bestimmen. Grundlage hierfür bilden die in Akka.NET integrierten Fehlertoleranzmechanismen, insbesondere das 
+Gossip-Protokoll sowie die Erreichbarkeitsüberwachung mittels periodischer Herzschlagsignale.
 
-Hier erklärst du:
-Coordinator-Singleton
-Steuerung von ShardRegion-Verfügbarkeit
-Handling von Node-Failures
-Rebalancing-Verhalten (auf Implementationsebene)
-Logs und Monitoring
-Dieser Abschnitt zeigt deinem Professor, dass deine Architektur wirklich robust ist.
+Akka.NET verbreitet Clusterzustände kontinuierlich über Gossip-Nachrichten, die in regelmäßigen Intervallen zufällig zwischen den Knoten 
+ausgetauscht werden. Auf diese Weise konvergiert der Wissenstand aller Clusterteilnehmer sukzessive zu einer gemeinsamen Sicht auf den 
+Systemzustand, ohne dass ein zentraler Koordinator erforderlich ist. Parallel dazu überwacht das Cluster-Subsystem die Erreichbarkeit der 
+einzelnen Knoten anhand von Heartbeats. Bleiben diese über einen bestimmten Zeitraum aus oder treten nur noch unregelmäßig auf, wird der 
+entsprechende Knoten zunächst als \texttt{Unreachable} markiert. Persistiert dieser Zustand, stuft das Cluster den Knoten als ausgefallen 
+ein und kennzeichnet ihn als \texttt{MemberRemoved} \parencite{akka_cluster_failure_overview}.
+
+Die Listener-Komponenten der Koordinationsschicht werten die dadurch generierten Ereignisse aus und aktualisieren ihre interne Sicht auf 
+die Clusterverfügbarkeit. Auf dieser Basis kann der \texttt{ClusterCoordinator} unmittelbar reagieren, indem er beispielsweise den 
+Ingress-Datenstrom deaktiviert, sobald die ShardRegion nicht mehr erreichbar ist. Dieses Verhalten ermöglicht eine fehlertolerante 
+Betriebsweise, bei der das Gesamtsystem trotz einzelner Knotenausfälle konsistent weiterarbeitet und verhindert wird, dass Nachrichten an 
+eine nicht verfügbare Backend-Struktur gesendet werden.
 
 \section{Api oder Visualisierungsschicht}
 
