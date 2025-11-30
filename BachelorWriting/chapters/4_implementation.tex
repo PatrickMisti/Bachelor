@@ -1005,16 +1005,99 @@ Ingress-Datenstrom deaktiviert, sobald die ShardRegion nicht mehr erreichbar ist
 Betriebsweise, bei der das Gesamtsystem trotz einzelner Knotenausfälle konsistent weiterarbeitet und verhindert wird, dass Nachrichten an 
 eine nicht verfügbare Backend-Struktur gesendet werden.
 
-\section{Api oder Visualisierungsschicht}
+\section{Client- und Visualisierungsschicht}
 
-Wenn du eine API oder UI hast, kannst du hier erklären:
-Wie man auf Fahrer-Daten zugreift
-Welche Endpunkte/Views es gibt
-Wie Entity-Daten aggregiert dargestellt werden
+Zur Veranschaulichung der im System erzeugten und verarbeiteten Daten wurde eine konsolenbasierte Client-Anwendung entwickelt, die als 
+leichtgewichtige Visualisierungsschicht dient. Der Client verbindet sich direkt mit dem Aktorensystem und ermöglicht die Interaktion mit 
+verschiedenen Komponenten, etwa zur Abfrage von Systemmetriken oder zur Steuerung der Datenverarbeitung.
+
+Eine separate API-Schicht wurde im Rahmen dieser Arbeit noch nicht umgesetzt, wird jedoch als sinnvolle Erweiterungsmöglichkeit betrachtet. 
+Eine solche Schnittstelle ließe sich auf Basis der bestehenden Architektur vergleichsweise einfach realisieren, da sie über eine Anbindung 
+an das Aktorensystem dieselben Nachrichten empfangen und versenden könnte wie der aktuelle Konsolen-Client. Dadurch wäre es möglich, 
+externe Anwendungen oder Visualisierungstools einzubinden und die Daten des Systems auch außerhalb der Konsolenoberfläche verfügbar zu machen.
+
+\subsection{Konsolenbasierter Monitoring-Client}
+
+Die entwickelte Konsolenanwendung dient als Monitoring-Client und ermöglicht eine übersichtliche Darstellung der im System erzeugten Metriken 
+und Statusinformationen. Für die strukturierte und visuell ansprechende Aufbereitung der Daten kommt das Drittanbieterpaket \texttt{Spectre.Console} 
+zum Einsatz, das erweiterte Funktionalitäten für die Gestaltung interaktiver und formatiert strukturierter Konsolenoberflächen bereitstellt.
+
+Abbildung~\ref{fig:console_client} zeigt einen Screenshot der Anwendung während der Laufzeit und veranschaulicht die textbasierte Visualisierung 
+der Systemzustände.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{./assets/console-client.png}
+  \caption{Konsolenbasierter Monitoring-Client (\enquote{Bachelor Akka Client})}
+  \label{fig:console_client}
+\end{figure}
+
+Die Oberfläche ist in mehrere Bereiche gegliedert:
+
+\begin{itemize}
+  \item \textbf{Throughput}: Anzeige der aktuell verarbeiteten Nachrichtenrate (Nachrichten pro Sekunde), 
+        der insgesamt verarbeiteten Nachrichten, der Laufzeit sowie einer einfachen Fehlerrate. 
+        Zusätzlich werden Latenz-Quantile (p50, p95, p99) visualisiert, sofern Messungen aktiv sind.
+  \item \textbf{Latency}: Detailliertere Darstellung der gemessenen Antwortzeiten in Millisekunden, 
+        ebenfalls aufgeteilt nach p50, p95 und p99 sowie Minimal- und Maximalwert.
+  \item \textbf{Cluster \& Shards}: Übersicht über den aktuellen Clusterzustand, insbesondere 
+        die Anzahl aktiver Knoten, Shards und Entities sowie den aktuell verwendeten Pipeline-Modus.
+  \item \textbf{Race-Informationen}: Anzeige kontextbezogener Domäneninformationen, etwa zur aktuell 
+        ausgewählten Rennstrecke (Location, Country).
+  \item \textbf{Controls}: Liste der verfügbaren Tastaturbefehle (z.\,B. Verbindungsaufbau, Start/Stop 
+        von Messungen, Wechsel des Rennens oder der Pipeline-Konfiguration).
+\end{itemize}
+
+Der Client kommuniziert hierzu direkt mit dem Cluster und bezieht sowohl Systemmetriken (z.,B. Cluster- und Shard-Zustand) als auch domänenspezifische Daten. 
+Er ist nicht als Endanwenderoberfläche konzipiert, sondern als leichtgewichtige Monitoring- und Debugging-Komponente, die es ermöglicht, die Funktionsweise 
+des verteilten Systems im Rahmen dieser Arbeit transparent und nachvollziehbar darzustellen.
 
 \section{Zusammenführung der Komponenten}
 
-Einfacher Abschnitt, um:
-den Datenfluss von „OpenF1 → Streams → Sharding → PubSub“
-End-to-End zu erklären
-Das zeigt, dass du die Implementation im Ganzen verstehst.
+In diesem Abschnitt wird das Zusammenspiel der zuvor beschriebenen Komponenten, \texttt{ClusterCoordinator}, \texttt{ShardRegion}, 
+Ingress-Schicht sowie Monitoring-Client, im Gesamtsystem erläutert.
+
+\subsection{Ablauf aus Sicht des Clusters}
+
+Nach dem Start des Clusters initialisieren sich die beteiligten Knoten entsprechend ihrer konfigurierten Rollen. Die ShardRegion wird auf 
+den Backend-Knoten gestartet und übernimmt die Verwaltung der persistierten Fahrerinstanzen (DriverActorPersistent). Parallel dazu 
+verbinden sich die Ingress-Knoten mit dem ClusterCoordinator, um Informationen über die Verfügbarkeit der ShardRegion zu erhalten.
+
+Sobald sowohl die ShardRegion als auch mindestens ein Ingress-Knoten verfügbar sind, erteilt der ClusterCoordinator die Freigabe 
+für die Weiterleitung von Daten vom Ingress an die ShardRegion. Wählt der Monitoring-Client anschließend ein Rennen aus, erhält der 
+Ingress-Dienst die Anweisung, die entsprechenden Telemetriedaten über OpenF1 zu beziehen und in einen Akka.Streams-Graph einzuspeisen. Innerhalb 
+des Stream-Graphs werden die Rohdaten aufbereitet und in ein einheitliches Nachrichtenformat konvertiert, das von der ShardRegion 
+verarbeitet werden kann.
+
+Die konvertierten Nachrichten werden anschließend über den ShardRegionProxy an die ShardRegion übermittelt. Diese prüft die 
+Nachricht und ordnet sie anhand der Fahrer-ID der zuständigen DriverActorPersistent-Instanz zu. Der Actor verarbeitet die eingehende 
+Nachricht, aktualisiert seinen Zustand, persistiert die Änderungen und sendet schließlich eine aktualisierte Fahrerdaten an den 
+Monitoring-Client.
+
+\subsection{Ablauf aus Sicht der Datenübertragung}
+
+Der Datenfluss beginnt im Ingress-Service, der die Telemetriedaten von OpenF1 kontinuierlich abruft und in einen Akka.Streams-Graph überführt. Innerhalb 
+des Stream-Graphs werden die Daten gefiltert, normalisiert und für die Weiterverarbeitung strukturiert. Durch den Einsatz von Backpressure wird verhindert, 
+dass nachgelagerte Komponenten überlastet werden.
+
+Die Übergabe an die ShardRegion erfolgt über einen ShardRegionProxy. Dieser verteilt die Nachrichten in Round-Robin-Manier an jene 
+Backend-Knoten, deren ShardRegion-Instanzen aktuell bereit sind, um eingehende Nachrichten zu verarbeiten. Die ShardRegion bestimmt 
+anhand der Fahrer-ID die zuständige Entity (DriverActorPersistent) und leitet die Nachricht weiter. Die Entity aktualisiert ihren persistenten 
+Zustand und sendet anschließend über den registrierten Event-Handler eine aktualisierte Fahrerdatenbenachrichtigung an den Monitoring-Client. Durch diese 
+Entkopplung wird sowohl Skalierbarkeit als auch Stabilität des Gesamtsystems gewährleistet.
+
+\subsection{Ablauf aus Sicht der Fehlertoleranz}
+
+Die Fehlertoleranz wird durch die in Akka.NET integrierten Mechanismen zur Clusterüberwachung sichergestellt. Fällt ein Clusterknoten aus oder reagiert 
+nicht mehr, erkennt das Gossip-Protokoll den Zustand und markiert den betreffenden Knoten zunächst als \texttt{Unreachable}. Persistiert dieser Zustand, 
+wird der Knoten als \texttt{MemberRemoved} eingestuft und aus dem Cluster entfernt.
+
+Der \texttt{ClusterEventListener} empfängt diese Ereignisse und informiert \texttt{ShardListener} und \texttt{IngressListener} über die entsprechenden 
+Änderungen. Der \texttt{ShardListener} aktualisiert daraufhin seine interne Sicht auf die Backend-Knoten und leitet diese Information an den 
+\texttt{ClusterCoordinator} weiter. Dieser informiert anschließend den \texttt{IngressListener}, der wiederum die Ingress-Knoten über die neue 
+Erreichbarkeitssituation der ShardRegion benachrichtigt. Solange keine funktionsfähige ShardRegion verfügbar ist, senden die Ingress-Knoten 
+keine Daten an den Cluster, wodurch inkonsistente Zustände und Nachrichtenverluste verhindert werden.
+
+Fällt eine einzelne \texttt{DriverActorPersistent}-Instanz aus, wird diese von der ShardRegion automatisch neu gestartet. Aufgrund der Persistierung 
+ihres vorherigen Zustands kann die Actor-Instanz ihren letzten konsistenten Zustand rekonstruieren und die Verarbeitung fortsetzen, ohne dass Daten verloren 
+gehen oder eine manuelle Wiederherstellung erforderlich ist.
