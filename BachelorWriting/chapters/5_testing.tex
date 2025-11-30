@@ -1,11 +1,137 @@
 \chapter{Tests und Analysen}
 
-\section{Teststrategie und Umgebung}
+in diesem Kapitel werden die durchgeführeten Tests und Analysen beschreiben, um genaueren Einblick in die Funktionsweise und Leistungsfähigkeit des entwickelten Systems zu geben.
+desweiteren werden die Ergebnisse dieser Tests diskutiert und bewertet. Als kleinen einspieler wird zunächst die Teststrategie und die Testumgebung erläutert.
 
+
+In diesem Kapitel werden die durchgeführten Tests und Analysen beschrieben, um einen detaillierten Einblick in die 
+Funktionsweise, Zuverlässigkeit und Leistungsfähigkeit des entwickelten Systems zu ermöglichen. Darüber hinaus werden 
+die erzielten Ergebnisse diskutiert und bewertet. Als Grundlage für die anschließenden Auswertungen werden zunächst die 
+verwendete Teststrategie sowie die Testumgebung erläutert.
+
+\section{Teststrategie und Testumgebung}
+
+Es wurden verschiedene Arten von Tests durchgeführt um die Funktionalität und Leistungsfähigkeit der einzelen Komponenten die im System verwendet werden zu überprüfen.
+Das wurde gemacht um die funktionalen Anforderungen zu testen und um zu testen wie sich die einzelen Komponenten unter verschiedenen Bedingungen verhalten.
+Da das System zwei Hauptkomponenten hat einerseits von Akka.NET ShardRegion und andererseits Akka.NET Streams wurden die Tests in diese zwei Bereiche unterteilt.
+Sie wurden in funktionale Tests, Failover-Tests??? und Performance-Tests unterteilt.
+
+Um die Tests über Aktoren zu testen wurde das TestKit von Akka.NET verwendet. Durch das TestKit kann man Aktoren in einer Kontrollierten, aber dennoch realistischen Umgebung testen.
+
+
+
+
+
+Zur Überprüfung der Funktionsfähigkeit und Robustheit des Systems wurden unterschiedliche Testarten eingesetzt. Diese 
+Tests dienen sowohl der Validierung der funktionalen Anforderungen als auch der Analyse des Verhaltens einzelner 
+Komponenten unter unterschiedlichen Betriebsbedingungen. Da das Gesamtsystem im Wesentlichen aus zwei zentralen 
+Technologiebereichen besteht – der Akka.NET \texttt{ShardRegion} und der Datenverarbeitung über Akka.NET Streams – 
+wurden die Testfälle entsprechend in diese beiden Bereiche strukturiert.
+
+Die durchgeführten Tests lassen sich in folgende Kategorien einteilen:
+
+\begin{itemize}
+    \item \textbf{Funktionale Tests}: Überprüfung der korrekten Verarbeitung, Persistierung und Weiterleitung der Daten.
+    \item \textbf{Failover- und Resilienztests}: Analyse des Systemverhaltens bei Node-Ausfällen, 
+          unerreichbaren Clusterknoten und Neustarts der persistierten Entitäten.
+    \item \textbf{Performance- und Durchsatztests}: Bewertung der Effizienz der Datenverarbeitung, der Stream-Pipelines 
+          sowie der Systemauslastung unter Last.
+\end{itemize}
+
+Für die Tests auf Actor-Ebene wurde das Akka.NET \texttt{TestKit} eingesetzt, das eine kontrollierte, aber dennoch 
+realitätsnahe Umgebung zur Überprüfung von Actor-Interaktionen, Nachrichtenflüssen und internen Zustandsänderungen bietet.
+
+
+
+
+Hier beschreibst du:
+
+Welche Arten von Tests du durchgeführt hast (funktional, Failover, Performance, Lasttests)
+
+Welche Tools (Konsole, Logs, Benchmarks, eigene Mess-Actor)
+
+Umgebung:
+
+Hardware
+Anzahl Clusterknoten
+Konfiguration (Rollen, Seeds, Ports)
+Akka.NET-Version
+Testdaten (OpenF1 → Live vs. Sample-Daten)
+Messmethoden (z. B. Stopwatch, eigene Metrics-Aktoren, Streams-Metriken)
+
+Das ist der Methodik-Teil.
 \section{Funktionale Tests}
+Wird die ShardRegion korrekt erstellt?
 
-\section{Verhalten bei Node ausfälle und Neuausrichtung}
+Werden Entities korrekt initialisiert?
 
-\section{Leistungs und Analysen von Stream Strategien}
+Werden Daten vom Ingress korrekt weitergeleitet?
 
+Persistiert der DriverActorPersistent richtig?
+
+Kommt die Rückmeldung beim Monitoring-Client korrekt an?
+
+Verhalten bei falschen Daten / ungültigen IDs
+
+\section{Verhalten bei Node-Ausfällen und Neuausrichtung}
+Test „Backend fällt aus“ → Erwartung:
+
+ShardListener erkennt Ausfall
+
+ClusterCoordinator deaktiviert Ingress
+
+ShardRegion wird umgezogen oder steht vorübergehend nicht zur Verfügung
+
+Test „Node kommt zurück“
+
+Wiederherstellung
+
+Shard-Neustart
+
+Rebalance
+
+Test „Actor fällt aus“
+
+Persistierter Zustand wird wiederhergestellt
+
+Keine Daten gehen verloren
+\section{Leistungsanalyse und Bewertung der Stream-Strategien}
+Verschiedene Stream-Konfigurationen:
+
+Buffergrößen
+
+Batchgrößen
+
+Supervisor-Strategien
+
+Backpressure-Verhalten
+
+Messungen:
+
+Throughput (msgs/s)
+
+Latenzen (p50, p95, p99)
+
+CPU / RAM-Auslastung
+
+Einfluss des Clusterwachstums
+
+Vergleich:
+
+mit/ohne Parallelisierung
+
+verschiedene Pipelines
+
+verschiedene Rennen (Datenlast unterschiedlich)
 \section{Diskussion der Ergebnisse}
+Warum verhalten sich Streams/Cluster so?
+
+Welche Bottlenecks hast du identifiziert?
+
+Was läuft stabil?
+
+Was müsste verbessert werden?
+
+Welche Architekturentscheidungen waren richtig/falsch?
+
+Wie gut erfüllt das System die Ziele der Arbeit?
