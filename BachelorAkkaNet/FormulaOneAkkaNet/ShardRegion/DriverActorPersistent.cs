@@ -40,7 +40,7 @@ public class DriverActorPersistent : ReceivePersistentActor
                 try
                 {
                     _state.Apply(evt);
-                    _logger.Info($"Initialized driver {_state.ToDriverInfoString()})");
+                    _logger.Debug($"Initialized driver {_state.ToDriverInfoString()})");
                     Sender.Tell(new Status.Success(CreatedDriverMessage.Success(_state.Key)));
                     // Optional: Idle-Passivation
                     //Context.SetReceiveTimeout(TimeSpan.FromMinutes(2));

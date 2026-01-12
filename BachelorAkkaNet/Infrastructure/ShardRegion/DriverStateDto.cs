@@ -3,6 +3,7 @@
 public sealed record DriverStateDto
 {
     public required DriverKey Key { get; init; }
+    public required string DriverName { get; init; }
     public int LapNumber { get; init; }
     public int PositionOnTrack { get; init; }
     public double Speed { get; init; }
@@ -25,6 +26,7 @@ public sealed record DriverStateDto
     public static DriverStateDto Create(DriverInfoState info) => new()
     {
         Key = info.Key!,
+        DriverName = info.LastName,
         LapNumber = info.LapNumber,
         PositionOnTrack = info.PositionOnTrack,
         Speed = info.Speed,

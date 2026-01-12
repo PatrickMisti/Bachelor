@@ -8,6 +8,8 @@ using Infrastructure.General;
 using Infrastructure.Http;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
+using Infrastructure.SocketMessages;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace FormulaOneAkkaNet.Ingress;
 
@@ -133,8 +135,42 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
             _log.Info("Polling mode requested but no sessionKey available yet. Waiting for session message...");
     }
 
+    // Demo
+    private const string ConnectionUrl = "https://localhost:7086/driverInfoHub";
+    private const string DriverInfoState = "driverInfoResponse";
+    private const string RaceSessionState = "raceSessionHub";
+    private HubConnection hubConnection = new HubConnectionBuilder()
+        .WithUrl(ConnectionUrl)
+        .WithAutomaticReconnect()
+        .Build();
+
+
     private async Task StartPushStreamClient(int sessionKey)
     {
+        hubConnection.On<GetDriverInfoMessage>(DriverInfoState, async (payload) =>
+        {
+            if (payload.Status != SignalStatus.Error)
+            {
+                await _pipeline.OfferAsync(payload.Driver!);
+            }
+            else
+            {
+                _pipeline.Stop();
+            }
+        });
+        hubConnection.On<GetRaceSessionMessage>(RaceSessionState, async payload =>
+        {
+            if (payload.Status != SignalStatus.Error)
+            {
+                await _pipeline.OfferAsync(payload.Session!);
+            }
+            else
+            {
+                _pipeline.Stop();
+            }
+        });
+
+        // Demo
         if (!_pipeline.IsPushMode || !_pipeline.IsRunning)
         {
             _log.Info("Pipeline ist not online or in false mode!");

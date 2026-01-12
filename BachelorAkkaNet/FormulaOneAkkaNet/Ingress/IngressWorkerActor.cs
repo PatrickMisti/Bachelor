@@ -19,58 +19,40 @@ public class IngressWorkerActor : ReceiveActor
 
         ReceiveAsync<IOpenF1Dto>(async msg =>
         {
+            var replyTo = Sender;
             try
             {
-                var message = msg switch
+                var task = msg switch
                 {
-                    IntervalDriverDto d => proxy.Ask<Status>(d.ToMap()),
-                    PersonalDriverDataDto d => proxy.Ask<Status>(d.ToMap()),
-                    PositionOnTrackDto d => proxy.Ask<Status>(d.ToMap()),
-                    TelemetryDateDto d => proxy.Ask<Status>(d.ToMap()),
+                    IntervalDriverDto d => proxy.Ask<Status>(d.ToMap(), TimeSpan.FromSeconds(8)),
+                    PersonalDriverDataDto d => proxy.Ask<Status>(d.ToMap(), TimeSpan.FromSeconds(8)),
+                    PositionOnTrackDto d => proxy.Ask<Status>(d.ToMap(), TimeSpan.FromSeconds(8)),
+                    TelemetryDateDto d => proxy.Ask<Status>(d.ToMap(), TimeSpan.FromSeconds(8)),
                     _ => null
                 };
-                /*switch (msg)
-                {
-                    case IntervalDriverDto d:
-                        proxy.Forward(d.ToMap());
-                        break;
-                    case PersonalDriverDataDto d:
-                        proxy.Forward(d.ToMap());
-                        break;
-                    case PositionOnTrackDto d:
-                        proxy.Forward(d.ToMap());
-                        break;
-                    case TelemetryDateDto d:
-                        proxy.Forward(d.ToMap());
-                        break;
-                    default:
-                        _log.Warning($"Message was no IOpenF1Dto message {msg.GetType()}");
-                        break;
-                }*/
 
-                if (message == null)
+                if (task is null)
                 {
                     _log.Warning($"Message was no IOpenF1Dto message {msg.GetType()}");
                     // Ack for backpressure
-                    Sender.Tell(StreamAck.Instance);
+                    replyTo.Tell(StreamAck.Instance);
                     return;
                 }
 
                 _log.Debug($"Forwarding message {msg.GetType()} to proxy");
-                Task.WaitAll(message);
-                var result = await message;
+                var result = await task.ConfigureAwait(false);
 
                 if (result is Status.Success)
                     _log.Debug("Send update to shard region");
 
                 // Ack for backpressure
-                Sender.Tell(StreamAck.Instance);
+                replyTo.Tell(StreamAck.Instance);
             }
             catch (Exception ex)
             {
                 _log.Error(ex, "Worker mapping/forwarding failed");
                 // send ack even on error to avoid stream deadlock
-                Sender.Tell(StreamAck.Instance);
+                replyTo.Tell(StreamAck.Instance);
             }
         });
     }

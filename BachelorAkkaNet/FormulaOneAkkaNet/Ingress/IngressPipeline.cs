@@ -1,10 +1,13 @@
 ﻿using Akka;
 using Akka.Actor;
 using Akka.Event;
+using Akka.Routing;
 using Akka.Streams;
 using Akka.Streams.Dsl;
 using Infrastructure.General;
 using Infrastructure.Http;
+using Infrastructure.PubSub;
+using Infrastructure.ShardRegion.Messages;
 
 namespace FormulaOneAkkaNet.Ingress;
 
@@ -43,25 +46,45 @@ public class IngressPipeline
     {
         StopInternal();
 
+        var workers = SpawnRouter(workerCount);
+
+        var (queue, source) = Source
+            .Queue<IOpenF1Dto>(bufferSize: 8192, overflowStrategy: OverflowStrategy.Backpressure)
+                .PreMaterialize(_mat);
+
+        var (ks, done) = source
+            .ViaMaterialized(KillSwitches.Single<IOpenF1Dto>(), Keep.Right)
+            .SelectAsyncUnordered(workerCount, async dto => await workers.Ask<StreamAck>(dto))
+            .Recover(ex =>
+            {
+                _log.Error(ex, "Stream failed, recovering and completing.");
+                //_system.PubSub().Api.Publish(new NotifyStatusFailureMessage(ex.Message));
+                return StreamAck.Instance;
+            })
+            .ToMaterialized(Sink.Ignore<StreamAck>(), Keep.Both)
+            .Run(_mat);
+        
+        _queue = queue;
+        _kill = ks;
+        _mode = Mode.Push;
+        _running = true;
+        _log.Debug("IngressPipeline started in PUSH mode with {0} workers.", workerCount);
+    }
+
+    public void StartPushDsl(int workerCount = 4)
+    {
+        StopInternal();
+
         var workers = SpawnWorkers(workerCount);
 
-        // Import BOTH: Source.Queue (mat: ISourceQueueWithComplete) and KillSwitches.Single (mat: IKillSwitch)
-        var source = Source.Queue<IOpenF1Dto>(bufferSize: 8192, overflowStrategy: OverflowStrategy.Backpressure);
-        var kill = KillSwitches.Single<IOpenF1Dto>(); // IGraph<FlowShape<T,T>, IKillSwitch>
+        var source = Source
+            .Queue<IOpenF1Dto>(bufferSize: 8192, overflowStrategy: OverflowStrategy.Backpressure);
 
-        // Combine both mats into a tuple (queue, ks) and wire: src -> ks -> balance -> sinks
-        var graph = GraphDsl.Create<
-            ClosedShape,
-            (ISourceQueueWithComplete<IOpenF1Dto> Queue, IKillSwitch Ks),
-            ISourceQueueWithComplete<IOpenF1Dto>,
-            IKillSwitch,
-            SourceShape<IOpenF1Dto>,
-            FlowShape<IOpenF1Dto, IOpenF1Dto>
-        >(
+        var graph = GraphDsl.Create(
             source,
-            kill,
-            combineMaterializers: (q, killer) => (q, killer),
-            buildBlock: (builder, src, killer) =>
+            KillSwitches.Single<IOpenF1Dto>(),
+            (q, kill) => (q, kill),
+            (builder, src, killer) =>
             {
                 var balance = builder.Add(new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: true));
 
@@ -87,8 +110,20 @@ public class IngressPipeline
         _kill = ks;
         _mode = Mode.Push;
         _running = true;
-        _log.Info("IngressPipeline started in PUSH mode with {0} workers.", workerCount);
+        _log.Debug("IngressPipeline started in PUSH mode with {0} workers.", workerCount);
     }
+
+
+/*
+ *<
+       ClosedShape,
+       (ISourceQueueWithComplete<IOpenF1Dto> Queue, IKillSwitch Ks),
+       ISourceQueueWithComplete<IOpenF1Dto>,
+       IKillSwitch,
+       SourceShape<IOpenF1Dto>,
+       FlowShape<IOpenF1Dto, IOpenF1Dto>
+   >
+ */
 
     /// <summary>Start polling mode (Tick + FetchNextBatch).</summary>
     public void StartPolling(IHttpWrapperClient pollClient, int sessionKey, int workerCount = 4)
@@ -237,10 +272,22 @@ public class IngressPipeline
         for (var i = 0; i < workerCount; i++)
             list.Add(_system.ActorOf(
                 IngressWorkerActor.Prop(_driverProxy),
-                $"ingress-worker-{i + 1}-{Guid.NewGuid()}"));
+                $"ingress-worker-{i + 1}-{Guid.NewGuid()}"
+            ));
 
         _workers = list;
 
         return list;
+    }
+
+    private IActorRef SpawnRouter(int workerCount)
+    {
+        var router = _system.ActorOf(
+            IngressWorkerActor.Prop(_driverProxy)
+                .WithRouter(new RoundRobinPool(workerCount)),
+            $"ingress-worker-router-{Guid.NewGuid()}"
+        );
+
+        return router;
     }
 }
