@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36511.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.1.11312.151 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FormulaOneAkkaNet", "FormulaOneAkkaNet\FormulaOneAkkaNet.csproj", "{4D7FAED9-4477-4DD7-AC78-5835FE382688}"
 EndProject
@@ -14,6 +14,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{AC83B228-F3B1-4F22-B16A-5CDDA715FF60}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MockOpenF1Service", "MockOpenF1Service\MockOpenF1Service.csproj", "{AA381E94-8415-4C3F-8415-D8DDE2BAA882}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestSuite", "TestSuite", "{8BEC4F70-DEEB-4604-B68F-3AE91BDB5DEB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Akka", "Akka", "{83BE459A-A8F2-4043-A27A-99367A01EFBC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +65,12 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4D7FAED9-4477-4DD7-AC78-5835FE382688} = {83BE459A-A8F2-4043-A27A-99367A01EFBC}
+		{BADBB50B-E989-45EA-A839-82E5B3B4E476} = {8BEC4F70-DEEB-4604-B68F-3AE91BDB5DEB}
+		{56E7839D-1843-4823-8A8E-5ACFCFA53A04} = {8BEC4F70-DEEB-4604-B68F-3AE91BDB5DEB}
+		{AC83B228-F3B1-4F22-B16A-5CDDA715FF60} = {83BE459A-A8F2-4043-A27A-99367A01EFBC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D26AA283-DE68-457F-BB73-4ECD5FFC06F6}
