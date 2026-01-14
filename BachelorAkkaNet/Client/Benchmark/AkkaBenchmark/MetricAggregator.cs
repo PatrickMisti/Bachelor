@@ -17,7 +17,7 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
     private DateTime _windowStart = DateTime.UtcNow;
 
     public event Action<MetricsUpdate>? OnUpdate;
-
+    public event Action<DriverInfoState> ? OnDriverInfoUpdate;
     private readonly Task _loop;
 
     public MetricAggregator()
@@ -79,7 +79,18 @@ internal sealed class MetricAggregator : IMetricsPublisher, IDisposable
             case StreamEnded end:
                 if (!end.Success) Interlocked.Increment(ref _winErrs);
                 break;
-            
+
+            case DriverInfoState state:
+                try
+                {
+                    OnDriverInfoUpdate?.Invoke(state);
+                }
+                catch
+                {
+                    // Avoid subscriber exceptions killing the loop
+                }
+                break;
+
             case CustomMetric:
                 // Hier könntest du eine Registry/Gauges pflegen
                 break;

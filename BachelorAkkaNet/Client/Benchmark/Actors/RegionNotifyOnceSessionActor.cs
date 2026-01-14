@@ -37,6 +37,7 @@ public class RegionNotifyOnceSessionActor : ReceivePubSubActor<IPubSubTopicApi>
         Receive<NotifyDriverStateMessage>(msg =>
         {
             _metrics.Publish(new StreamBatch(1, _sw!.ElapsedMilliseconds, true));
+            _metrics.Publish(new DriverInfoState(msg));
         });
 
         // Upstream meldet Failure explizit

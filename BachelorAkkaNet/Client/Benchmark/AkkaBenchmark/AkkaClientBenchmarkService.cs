@@ -15,6 +15,7 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
 {
     public event Action<MetricsUpdate>? Metrics;
     public event Action<MetricsSnapshot>? ClusterNodes;
+    public event Action<DriverInfoState>? DriverInfoUpdate;
 
     private readonly ActorSystem _actorSystem;
     private IActorRef? _apiController;
@@ -40,6 +41,7 @@ internal class AkkaClientBenchmarkService : IBenchmarkService, IMetricsPublisher
 
         _logger = Logging.GetLogger(_actorSystem, typeof(AkkaClientBenchmarkService));
         _agg.OnUpdate += u => Metrics?.Invoke(u);
+        _agg.OnDriverInfoUpdate += m => DriverInfoUpdate?.Invoke(m);
     }
 
     public Task StartAsync()

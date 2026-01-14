@@ -6,6 +6,7 @@ public interface IBenchmarkService
 {
     event Action<MetricsUpdate>? Metrics;
     event Action<MetricsSnapshot>? ClusterNodes;
+    event Action<DriverInfoState>? DriverInfoUpdate;
 
     Task StartAsync();
     Task<IEnumerable<RaceSession>?> CheckMeasuringAsync();

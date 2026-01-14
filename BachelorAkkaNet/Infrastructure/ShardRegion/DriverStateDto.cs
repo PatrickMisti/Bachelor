@@ -40,4 +40,9 @@ public sealed record DriverStateDto
         Sector3Time = info.Sector3Time,
         Timestamp = info.TimestampUtc
     };
+
+    public override string ToString()
+    {
+        return $"Nr.{Key.DriverNumber} - {DriverName}: Position {PositionOnTrack}";
+    }
 }

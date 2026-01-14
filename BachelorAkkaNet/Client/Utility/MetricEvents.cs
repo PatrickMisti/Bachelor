@@ -1,4 +1,6 @@
-﻿namespace Client.Utility;
+﻿using Infrastructure.ShardRegion.Messages;
+
+namespace Client.Utility;
 
 public interface IMetricsPublisher
 {
@@ -34,6 +36,11 @@ public readonly record struct PipelineMode(string Mode) : IMetricEvent
 
 // Freier Haken für spätere Erweiterungen (Cluster-Infos etc.)
 public readonly record struct CustomMetric(string Name, double Value) : IMetricEvent
+{
+    public DateTime TimestampUtc { get; init; } = DateTime.UtcNow;
+}
+
+public record DriverInfoState(NotifyDriverStateMessage Msg) : IMetricEvent
 {
     public DateTime TimestampUtc { get; init; } = DateTime.UtcNow;
 }

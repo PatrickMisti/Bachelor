@@ -80,15 +80,23 @@ public class IngressPipeline
         var source = Source
             .Queue<IOpenF1Dto>(bufferSize: 8192, overflowStrategy: OverflowStrategy.Backpressure);
 
+        var restartable =
+            RestartFlow.WithBackoff<IOpenF1Dto, IOpenF1Dto, NotUsed>(
+                Flow.Create<IOpenF1Dto>,
+                RestartSettings.Create(
+                    minBackoff: TimeSpan.FromSeconds(1),
+                    maxBackoff: TimeSpan.FromSeconds(30),
+                    randomFactor: 0.2));
+
         var graph = GraphDsl.Create(
             source,
             KillSwitches.Single<IOpenF1Dto>(),
             (q, kill) => (q, kill),
-            (builder, src, killer) =>
+            (builder, src, kill) =>
             {
-                var balance = builder.Add(new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: true));
+                var balance = builder.Add(new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: false));
 
-                builder.From(src).Via(killer).To(balance.In);
+                builder.From(src).Via(kill).Via(restartable).To(balance.In);
 
                 for (int i = 0; i < workers.Count; i++)
                 {

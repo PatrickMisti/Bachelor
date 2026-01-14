@@ -18,7 +18,18 @@ internal class ScreenView(BenchmarkTui tui)
         g.AddRow(ThroughputPanel(), LatencyPanel());
         g.AddRow(ClusterPanel(), ShowRaceSessions());
         g.AddRow(ControlsPanel());
+        g.AddRow(DriverStatePanel());
         return g;
+    }
+
+    private Panel DriverStatePanel()
+    {
+        var t = new Table().NoBorder().AddColumn("Driver").AddColumn("State");
+        foreach (var kv in tui.DriverStates)
+        {
+            t.AddRow(kv.Value.ToString());
+        }
+        return new Panel(t).Header("Driver States", Justify.Left);
     }
 
     private Panel ThroughputPanel()

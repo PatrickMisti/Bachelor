@@ -139,6 +139,8 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
     private const string ConnectionUrl = "https://localhost:7086/driverInfoHub";
     private const string DriverInfoState = "driverInfoResponse";
     private const string RaceSessionState = "raceSessionHub";
+
+    private const string DriverInfoInvokeName = "LoadDriverForSessionKey";
     private HubConnection hubConnection = new HubConnectionBuilder()
         .WithUrl(ConnectionUrl)
         .WithAutomaticReconnect()
@@ -158,6 +160,7 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
                 _pipeline.Stop();
             }
         });
+
         hubConnection.On<GetRaceSessionMessage>(RaceSessionState, async payload =>
         {
             if (payload.Status != SignalStatus.Error)
@@ -169,6 +172,11 @@ public class IngressControllerActor : ReceivePubSubActor<IPubSubTopicIngress>
                 _pipeline.Stop();
             }
         });
+        // .....
+
+        //await hubConnection.SendAsync(DriverInfoInvokeName);
+        // .....
+
 
         // Demo
         if (!_pipeline.IsPushMode || !_pipeline.IsRunning)

@@ -2,7 +2,9 @@
 using System.Collections.Concurrent;
 using Client.Utility;
 using Infrastructure.General;
+using Infrastructure.ShardRegion;
 using Spectre.Console;
+using DriverInfoState = Client.Utility.DriverInfoState;
 
 namespace Client.Benchmark;
 
@@ -22,12 +24,20 @@ public class BenchmarkTui
 
     public List<(bool selected, RaceSession race)>? Sessions;
 
+    public Dictionary<string, DriverStateDto> DriverStates = new();
+
     public BenchmarkTui(IBenchmarkService service, CancellationToken stop)
     {
         _service = service;
         _stop = stop;
         _service.Metrics += OnMetrics;
         _service.ClusterNodes += OnNodes;
+        _service.DriverInfoUpdate += SaveDriverIntoTable;
+    }
+
+    public void SaveDriverIntoTable(DriverInfoState state)
+    {
+        DriverStates[state.Msg.Key.ToString()] = state.Msg.State;
     }
 
     private void OnMetrics(MetricsUpdate e)
