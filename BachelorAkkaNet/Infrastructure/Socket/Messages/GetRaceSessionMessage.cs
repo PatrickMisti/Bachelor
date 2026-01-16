@@ -1,6 +1,6 @@
 ﻿using Infrastructure.Http;
 
-namespace Infrastructure.SocketMessages;
+namespace Infrastructure.Socket.Messages;
 
 public class GetRaceSessionMessage
 {

@@ -16,10 +16,12 @@
       <PackageReference Include="Microsoft.NET.Test.Sdk" />
       <PackageReference Include="Akka.Cluster" />
       <PackageReference Include="Akka.Cluster.Sharding" />
+      <PackageReference Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    <ProjectReference Include="..\MockOpenF1Service\MockOpenF1Service.csproj" />
   </ItemGroup>
 
 </Project>

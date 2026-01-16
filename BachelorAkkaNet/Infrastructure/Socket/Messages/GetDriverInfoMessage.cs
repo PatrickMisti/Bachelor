@@ -1,7 +1,7 @@
 ﻿using Akka.Routing;
 using Infrastructure.Http;
 
-namespace Infrastructure.SocketMessages;
+namespace Infrastructure.Socket.Messages;
 
 
 public enum SignalStatus

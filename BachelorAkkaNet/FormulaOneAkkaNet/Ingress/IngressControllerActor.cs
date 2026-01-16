@@ -8,7 +8,7 @@ using Infrastructure.General;
 using Infrastructure.Http;
 using Infrastructure.PubSub;
 using Infrastructure.PubSub.Messages;
-using Infrastructure.SocketMessages;
+using Infrastructure.Socket.Messages;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace FormulaOneAkkaNet.Ingress;

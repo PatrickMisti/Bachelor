@@ -1,0 +1,30 @@
+﻿<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>SignalR Test</title>
+	<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+</head>
+<body>
+<button id="btn">SendMessage</button>
+<pre id="log"></pre>
+
+<script>
+    const log = (x) => document.getElementById("log").textContent += x + "\n";
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl("https://localhost:7086/driverInfoHub")
+      .build();
+
+    connection.on("driverInfoResponse", (msg) => log("msg: " + msg.status));
+
+    connection.start()
+      .then(() => log("connected"))
+      .catch(err => log("error: " + err));
+
+    document.getElementById("btn").onclick = () => {
+        connection.invoke("LoadDriverForSessionKey", 9158);
+    };
+    </script>
+</body>
+</html>
