@@ -63,7 +63,8 @@ public class IngressPipeline
             combineMaterializers: (q, killer) => (q, killer),
             buildBlock: (builder, src, killer) =>
             {
-                var balance = builder.Add(new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: true));
+                var balance = builder.Add(
+                    new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: true));
 
                 builder.From(src).Via(killer).To(balance.In);
 
@@ -75,7 +76,9 @@ public class IngressPipeline
                         ackMessage: StreamAck.Instance,
                         onCompleteMessage: StreamCompleted.Instance);
 
-                    builder.From(balance.Out(i)).To(builder.Add(sink));
+                    builder
+                        .From(balance.Out(i))
+                        .To(builder.Add(sink));
                 }
 
                 return ClosedShape.Instance;

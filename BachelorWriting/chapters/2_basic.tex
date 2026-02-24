@@ -2,22 +2,215 @@
 
 \section{Einführung in Reactive Systems und Aktorenmodell}
 
-\section{Akka.Net Framework}
+\subsection{Motivation reaktiver Systeme}
 
-\subsection{Cluster}
-\subsection{Aktoren}
-was passiert bei ausfall einer nachricht messages erklären?
-\subsection{Sharding}
-shard in der shardregio was ist das erklären?
-\subsection{Singleton}
-\subsection{Verteiltes Pub/Sub}
-was passiert bei ausfall einer nachricht 
+Da sich bei der Entwicklung moderner Softwaresysteme immer wieder ähnliche Anforderungsmuster zeigen, 
+wird deutlich, dass klassische Architekturen den heutigen Bedingungen nur noch eingeschränkt gerecht werden. 
+Der rasante technische Fortschritt sowie die zunehmende gesellschaftliche Nutzung digitaler Systeme führen dazu, 
+dass Anwendungen deutlich komplexer, verteilter und leistungsintensiver geworden sind. Während große 
+Anwendungen früher aus wenigen miteinander kommunizierenden Servern bestanden, arbeiten heutige Systeme 
+auf einer Vielzahl verteilter Knoten, häufig in Cloud-Umgebungen, und müssen große Datenmengen bei gleichzeitig 
+hohen Verfügbarkeitsanforderungen verarbeiten \parencite{reactive_manifesto, kuhn_reactive_patterns}.
 
-\section{Akka.Net Streams}
+Ein zentrales Problem moderner Softwaresysteme besteht darin, dass sie unter allen Umständen reaktionsfähig 
+bleiben sollen, obwohl einzelne Komponenten jederzeit ausfallen können. Die zunehmende Verteilung von 
+Anwendungen über mehrere Rechner macht deutlich, dass die Nebenläufigkeit und Fehlermöglichkeiten verteilter 
+Systeme nicht länger verborgen oder abstrahiert werden können. Frühere Ansätze versuchten, die Illusion einer 
+lokal und sequenziell arbeitenden Anwendung aufrechtzuerhalten, obwohl diese tatsächlich auf mehreren Kernen 
+oder Netzwerkknoten ausgeführt wurde. Die wachsende Diskrepanz zwischen dieser Abstraktion und der tatsächlichen 
+Systemrealität führte jedoch zu erhöhter Komplexität und Fehlanfälligkeit. Moderne Architekturen müssen daher 
+die verteilte und nebenläufige Natur von Anwendungen explizit im Programmiermodell berücksichtigen, anstatt sie 
+zu verstecken. Nur so kann gewährleistet werden, dass Systeme auch bei Teilausfällen, Lastschwankungen oder 
+Programmfehlern weiterhin antwortbereit bleiben \parencite[Kap.~1]{kuhn_reactive_patterns}.
 
-\subsection{GraphDSL}
-\subsection{Overflow Strategien}
+
+Um diesen neuen Anforderungen gerecht zu werden, wurden vier zentrale Qualitätsmerkmale identifiziert, 
+die zuvor meist isoliert betrachtet wurden. Reaktive Systeme zeichnen sich durch vier zentrale Eigenschaften aus: 
+eine zeitnahe Reaktionsfähigkeit, eine hohe Fehlertoleranz, die Fähigkeit zur elastischen Skalierung sowie eine 
+konsequent nachrichtenbasierte Kommunikation. Diese Merkmale bilden die Grundlage für den Entwurf verteilter, 
+lastadaptiver Softwaresysteme. Erst die Kombination dieser 
+Eigenschaften definiert ein sogenanntes reaktives System \parencite{reactive_manifesto, kuhn_reactive_patterns}.
 
 
-\section{Vergleich mit ähnlichen Systemen}
-Kafka Streams EventHubs
+\subsection{Eigenschaften reaktiver Systeme}
+
+Nach dem Reactive Manifesto zeichnen sich reaktive Systeme durch vier zentrale Eigenschaften aus \parencite{reactive_manifesto}:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{assets/reactive_system.png}
+    \caption{Eigenschaften reaktiver Systeme \parencite{reactive_manifesto}}
+    \label{fig:architecture_manifesto}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Antwortbereit:} Das System reagiert zeitgerecht auf Anfragen. Vorhersagbare Antwortzeiten 
+    sind essenziell für Benutzerfreundlichkeit und Fehlererkennung.
+    \item \textbf{Widerstandsfähig:} Das System bleibt trotz Ausfällen funktionsfähig. Fehler werden isoliert 
+    behandelt und nicht global propagiert.
+    \item \textbf{Elastisch:} Das System kann sich dynamisch an wechselnde Lastbedingungen anpassen, 
+    indem Ressourcen horizontal skaliert werden.
+    \item \textbf{Nachrichtenorientiert:} Komponenten kommunizieren über asynchrone Nachrichten, wodurch lose 
+    Kopplung, Isolation und Lastverteilung ermöglicht werden.
+\end{itemize}
+
+Diese Eigenschaften bilden die konzeptionelle Grundlage für verteilte, fehlertolerante Softwaresysteme \parencite{reactive_manifesto}.
+
+\subsection{Das Aktorenmodell}
+
+Das Aktorenmodell ist ein Nebenläufigkeits- und Verteilungsmodell zur Strukturierung komplexer Softwaresysteme. 
+Es wurde ursprünglich von Carl Hewitt in den 1970er-Jahren eingeführt und beschreibt ein System als Menge 
+unabhängiger, parallel ausführbarer Einheiten, sogenannter Aktoren \parencite{hewitt1973actors}.
+
+Ein Aktor stellt im Aktorenmodell eine isolierte Verarbeitungseinheit dar, deren Interaktion mit anderen 
+Komponenten ausschließlich über asynchrone Nachrichten erfolgt. Durch diese strikte Entkopplung wird der 
+Zugriff auf gemeinsamen Zustand vermieden, wodurch typische Nebenläufigkeitsprobleme wie Race Conditions 
+reduziert werden. Beim Empfang einer Nachricht kann ein Aktor drei grundlegende Aktionen ausführen: 
+(1) seinen internen Zustand verändern, (2) neue Nachrichten an andere Aktoren senden und 
+(3) neue Aktoren erzeugen \parencite{hewitt1973actors}.
+
+Ein wesentlicher Vorteil des Aktorenmodells besteht in der strikten Kapselung von Zustand und Verhalten. 
+Jeder Aktor verwaltet seinen Zustand privat und interagiert mit anderen Aktoren ausschließlich über 
+asynchrone Nachrichten. Beim Empfang einer Nachricht verarbeitet der Aktor diese gemäß seinem aktuellen 
+Verhalten und kann daraufhin seinen Zustand ändern, weitere Nachrichten versenden oder neue Aktorinstanzen 
+erzeugen. Durch die Isolation des Zustands und die ausschließliche Kommunikation über Nachrichten werden 
+typische Probleme nebenläufiger Programmierung, wie Race Conditions oder Deadlocks, weitgehend vermieden 
+\parencite[pp.~12--14]{kuhn_aktormodell,hewitt1973actors}.
+
+\section{Akka.NET als Framework für verteilte reaktive Systeme}
+
+\subsection{Aktoren und asynchrones Nachrichtenmodell}
+
+Akka.NET stellt ein Framework zur Umsetzung verteilter und fehlertoleranter Softwaresysteme auf Basis 
+des Aktorenmodells bereit. Es abstrahiert Nebenläufigkeit und Verteilung durch ein einheitliches 
+Nachrichtenmodell und ermöglicht damit die Entwicklung hochgradig skalierbarer Anwendungen ohne explizite 
+Synchronisationsmechanismen \parencite{roestenburg2016akkaina,akkaNet_problems_solved}.
+
+Die Kommunikation zwischen Aktoren erfolgt vollständig asynchron über Nachrichten, die in Mailboxen 
+zwischengespeichert und sequenziell verarbeitet werden. Dieses nicht-blockierende Nachrichtenmodell 
+führt zu einer klaren Entkopplung der Komponenten und reduziert typische Nebenläufigkeitsprobleme wie 
+Race Conditions oder Deadlocks \parencite[pp.~12--18]{kuhn_aktormodell}. 
+Gleichzeitig erlaubt es eine hohe Parallelität und flexible Skalierung über mehrere Knoten hinweg.
+
+Darüber hinaus unterstützt Akka.NET transparente Kommunikation zwischen lokal und verteilt ausgeführten 
+Aktoren, wodurch verteilte Systeme entwickelt werden können, ohne die 
+Anwendungslogik an Netzwerkgrenzen anzupassen \parencite[pp.~7--10]{roestenburg2016akkaina}. 
+Durch die nachrichtengetriebene Interaktion folgt Akka.NET den Prinzipien reaktiver Systeme wie 
+Reaktionsfähigkeit, Fehlertoleranz und Elastizität \parencite{boner2014reactivemanifesto}.
+
+\subsection{Cluster und Fehlertoleranz}
+
+Akka.NET stellt mit dem Modul \emph{Akka.Cluster} Mechanismen zur Realisierung fehlertoleranter und 
+skalierbarer verteilter Systeme bereit. Ein Cluster bildet dabei ein dezentrales Peer-to-Peer-Netzwerk 
+mehrerer Akka.NET-Knoten ohne zentralen Koordinator oder Single Point of Failure \parencite{akka_cluster_failure_overview}. 
+Neue Knoten können dem Cluster dynamisch beitreten, während ausgefallene Knoten automatisch erkannt und 
+aus dem Verbund entfernt werden, wodurch eine hohe Verfügbarkeit des Gesamtsystems gewährleistet wird.
+
+Die Clusterfunktionalität basiert auf dem Remoting-Modul von Akka.NET, erweitert dieses jedoch um 
+Funktionen zur automatischen Knotenerkennung, Rollenverwaltung sowie zur Lastverteilung über 
+clusterfähige Router \parencite{akka_cluster_failure_overview}. Dadurch lassen sich Anwendungen elastisch skalieren und 
+zustandsbehaftete Komponenten replizieren, ohne die Anwendungslogik anpassen zu müssen.
+
+Ein zentrales Ziel von Akka.Cluster ist die Fehlertoleranz verteilter Systeme. Durch die dezentrale 
+Organisation können Ausfälle einzelner Knoten kompensiert werden, während andere Instanzen weiterhin 
+Anfragen verarbeiten. Dieses Prinzip entspricht den Anforderungen reaktiver Systeme, die auf 
+Resilience und Elasticity ausgelegt sind \parencite{boner2014reactivemanifesto}. 
+Die Kombination aus Aktorenmodell und Clustering ermöglicht es somit, robuste, hochverfügbare 
+und horizontal skalierbare Anwendungen zu entwickeln \parencite[Kap.8]{roestenburg2016akkaina}.
+
+\subsection{Cluster Sharding}
+
+Cluster Sharding ist ein Mechanismus in Akka.NET zur verteilten Verwaltung zustandsbehafteter Aktoren 
+(Entities) über mehrere Clusterknoten hinweg. Aktoren werden dabei über ihre logische Identität adressiert, 
+ohne dass ihre physische Platzierung im Cluster bekannt sein muss. Erstellung, Lokalisierung und Migration 
+der Entitäten erfolgen automatisch durch das Framework, wodurch skalierbare verteilte Systeme vereinfacht 
+umgesetzt werden können \parencite{getakka_cluster_sharding}.
+
+Zur Lastverteilung werden Entities in sogenannte Shards gruppiert, die als Verteilungseinheiten auf die 
+Clusterknoten verteilt werden. Beim Beitritt oder Ausfall von Knoten können Shards automatisch neu 
+zugewiesen werden (Rebalancing), sodass das System elastisch auf Veränderungen der Clustergröße reagiert 
+\parencite{getakka_cluster_sharding,roestenburg2016akkaina}. 
+
+Je nach Konfiguration kann die Platzierung der Shards entweder über verteilte Datenstrukturen 
+(CRDT-basierte Replikation) oder über persistente Koordinatoren verwaltet werden. Cluster Sharding ist 
+dabei nur auf Knoten im Status \emph{Up} aktiv, wodurch ausschließlich vollständig integrierte Knoten an 
+der Verteilung beteiligt sind \parencite{getakka_cluster_sharding}.
+
+Insgesamt ermöglicht Cluster Sharding eine transparente Adressierung verteilter Aktoren sowie eine 
+automatische Lastverteilung und stellt damit einen zentralen Baustein für skalierbare und fehlertolerante 
+reaktive Systeme dar \parencite[pp.~316--319]{kuhn2017reactivedesignpatterns,boner2014reactivemanifesto}.
+
+\subsection{Persistente Aktoren}
+
+Für die dauerhafte Speicherung zustandsbehafteter Aktoren wird in der Architektur Akka.Persistence eingesetzt. 
+Dieses Modul ermöglicht es, interne Zustandsänderungen von Aktoren zu persistieren, sodass ihr Zustand nach 
+einem Neustart, Ausfall oder einer Migration im Cluster wiederhergestellt werden kann \parencite{getakka_persistence}. 
+Dabei wird nicht der aktuelle Zustand direkt gespeichert, sondern ausschließlich die Änderungen am Zustand 
+in Form von Ereignissen protokolliert.
+
+Dieses Vorgehen folgt dem Event-Sourcing-Paradigma, bei dem alle Zustandsänderungen als unveränderliche 
+Ereignisse in einem Journal abgelegt werden. Das Journal stellt somit die alleinige Quelle der Wahrheit dar, 
+aus der der aktuelle Zustand eines Aktors durch erneutes Abspielen der Ereignisse rekonstruiert werden kann 
+\parencite[Kap.~9]{roestenburg2016akkaina}. Zur Beschleunigung der Wiederherstellung können zusätzlich 
+Snapshots des aktuellen Zustands gespeichert werden, sodass nicht immer die vollständige Ereignishistorie 
+repliziert werden muss \parencite{getakka_persistence}.
+
+Die Verwendung von Event Sourcing bietet mehrere Vorteile für verteilte Systeme. Da nur Zustandsänderungen 
+persistiert und niemals überschrieben werden, entsteht eine nicht veränderliche Historie, die eine effiziente 
+Replikation und hohe Transaktionsraten ermöglicht \parencite{getakka_persistence}. Gleichzeitig lassen sich 
+Persistenz, Änderungsnachverfolgung und Wiederherstellung konsistent vereinen, was insbesondere in 
+skalierbaren und fehlertoleranten Architekturen von zentraler Bedeutung ist.
+
+Im Kontext reaktiver Systeme stellt Event Sourcing zudem einen wichtigen Baustein zur konsistenten 
+Zustandsverwaltung in elastischen Clustern dar, da replizierte Ereignisströme als Grundlage für 
+verteilte Zustandsrekonstruktion und Event-basierte Kommunikation dienen \parencite[pp.~312--315]{kuhn2017reactivedesignpatterns}.
+
+\subsection{Cluster Singleton}
+
+Ein Cluster-Singleton stellt sicher, dass innerhalb eines verteilten Clusters genau eine Instanz eines 
+bestimmten Aktors aktiv ist. Dieses Konzept wird eingesetzt, wenn clusterweite Koordination oder konsistente 
+Entscheidungen zentral getroffen werden müssen, beispielsweise als zentraler Einstiegspunkt für externe 
+Systeme oder zur Koordination verteilter Arbeitsknoten \parencite{getakka_singleton}. 
+
+Ein Cluster-Singleton wird typischerweise auf einem geeigneten Knoten im Cluster ausgeführt und bei Ausfall 
+automatisch auf einen anderen Knoten verlagert, sodass die Verfügbarkeit erhalten bleibt. Damit wird verhindert, 
+dass mehrere konkurrierende Instanzen gleichzeitig existieren, was insbesondere für konsistente 
+Zustandsverwaltung oder globale Koordinationsaufgaben erforderlich ist 
+\parencite[pp.~186--187]{kuhn2017reactivedesignpatterns}. 
+
+Der Einsatz eines Singletons bringt jedoch auch Nachteile mit sich. Da alle Anfragen an eine zentrale 
+Instanz gerichtet werden, kann dieser Aktor zu einem Engpass werden und potenziell eine Engstelle im System darstellen. 
+Obwohl ein neuer Singleton nach einem Ausfall automatisch gestartet wird, kann es während der Migration zu 
+kurzzeitigen Unterbrechungen kommen \parencite[Kap.~13.4]{roestenburg2016akkaina}. 
+
+Cluster-Singletons eignen sich daher insbesondere für Aufgaben mit zentraler Verantwortung, Koordinatoren 
+oder zentrale Routinglogik, während für hochgradig skalierende und stark parallelisierte Verarbeitung eher 
+verteilte Aktoren ohne zentrale Instanz bevorzugt werden sollten \parencite{getakka_singleton}.
+
+\subsection{Verteiltes Publish/Subscribe}
+
+Akka.NET bietet mit dem Modul \emph{Distributed Publish/Subscribe} einen Mechanismus zur losen Kopplung 
+verteilter Aktoren über Topics. Subscriber registrieren sich beim lokalen Mediator, während Publisher 
+Nachrichten an ein Topic senden, ohne die konkreten Empfänger kennen zu müssen. Die Zustellung erfolgt 
+asynchron und wird clusterweit repliziert, wodurch eine skalierbare und entkoppelte Ereignisverteilung 
+innerhalb verteilter Aktorensysteme ermöglicht wird \parencite{getakka_distributed_pubsub}.
+
+\subsection{Reaktive Streams}
+
+Unter einem Datenstrom wird eine kontinuierliche Folge von Ereignissen verstanden, die inkrementell 
+verarbeitet wird, anstatt als vollständige Datenmenge vorzuliegen. Dieses Verarbeitungsmodell ist 
+insbesondere für Echtzeitanwendungen relevant, in denen Daten fortlaufend eintreffen und ohne Verzögerung 
+ausgewertet werden müssen \parencite[Kap.~10]{roestenburg2016akkaina}. 
+
+Ein zentrales Problem bei der Verarbeitung solcher Datenströme entsteht, wenn Produzenten Daten schneller 
+erzeugen, als Konsumenten diese verarbeiten können. Ohne geeignete Flusskontrolle würden sich Nachrichten 
+in Puffern ansammeln und letztlich zu Ressourcenerschöpfung oder Systemausfällen führen \parencite[Kap.~10]{roestenburg2016akkaina}. 
+Zur Lösung dieses Problems wurde die Reactive-Streams-Initiative entwickelt, auf der Akka.Streams basiert. 
+Sie definiert ein asynchrones, nicht-blockierendes Kommunikationsmodell mit integriertem Backpressure, 
+bei dem Konsumenten die Datenrate steuern, indem sie aktiv Nachfrage signalisieren \parencite{reactive_streams_spec}. 
+
+Dieses Prinzip entspricht dem Pull-Pattern, bei dem Verbraucher Arbeitseinheiten explizit anfordern und so 
+die Verarbeitungskapazität kontrollieren. Dadurch kann sich das System dynamisch an unterschiedliche 
+Lastsituationen anpassen und verhindert eine Überlastung einzelner Komponenten \parencite[pp.~295--298]{kuhn2017reactivedesignpatterns}. 
+Backpressure bildet somit ein zentrales Konzept für resiliente und skalierbare Datenstromverarbeitung in 
+reaktiven Systemen.

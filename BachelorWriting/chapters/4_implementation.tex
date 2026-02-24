@@ -8,6 +8,8 @@ Komponenten, die nicht direkt zum Kerngeschäft gehören, wie Infrastrukturkompo
 sind in eigenständige Projekte ausgelagert. Dadurch wird die Wartbarkeit verbessert und eine klare Trennung 
 der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbildung~\ref{fig:project-structure} dargestellt.
 
+\begin{figure}[H]
+\centering
 \definecolor{folderbg}{RGB}{124,166,198}
 \definecolor{folderborder}{RGB}{110,144,169}
 
@@ -15,13 +17,12 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
 \tikzset{
   folder/.pic={
     \filldraw[draw=folderborder,top color=folderbg!50,bottom color=folderbg]
-      (-1.05*\Size,0.2\Size+5pt) rectangle ++(.75*\Size,-0.2\Size-5pt);  
+      (-1.05*\Size,0.2\Size+5pt) rectangle ++(.75*\Size,-0.2\Size-5pt);
     \filldraw[draw=folderborder,top color=folderbg!50,bottom color=folderbg]
       (-1.15*\Size,-\Size) rectangle (1.15*\Size,\Size);
   }
 }
 
-\label{fig:project-structure}
 \begin{forest}
   for tree={
     font=\ttfamily,
@@ -36,13 +37,11 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
       (!u.south west) +(7.5pt,0) |- (.child anchor) pic {folder} \forestoption{edge label};
     },
     before typesetting nodes={
-      if n=1
-        {insert before={[,phantom]}}
-        {}
+      if n=1 {insert before={[,phantom]}} {}
     },
     fit=band,
     before computing xy={l=15pt},
-  }  
+  }
 [BachelorAkkaNet
   [FormulaOneAkkaNet
     [Config]
@@ -52,7 +51,6 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
   ]
   [Infrastructure
     [General]
-    [Http]
     [PubSub]
     [ShardRegion]
   ]
@@ -60,6 +58,9 @@ der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbild
   [Tests]
 ]
 \end{forest}
+\caption{Gesamtstruktur des Projekts}
+\label{fig:project-structure}
+\end{figure}
 
 Die modulare Struktur des Projekts stellt sicher, dass die implementierten Rollen des Systems klar voneinander 
 abgegrenzt sind. Jede Modulkomponente enthält ausschließlich die für ihre Rolle relevanten Aktorimplementierungen 
@@ -111,7 +112,7 @@ vereinfacht wird. Serilog und Npgsql ergänzen die Architektur durch Logging und
 
 \section{Konfiguration und Initialisierung des Clusters}
 
-\subsection{HOCON Konfiguration}
+\subsection{HOCON-Konfiguration}
 
 Die Konfiguration eines Akka.NET-Systems kann auf zwei unterschiedliche Arten erfolgen. 
 Zum einen kann die HOCON-Konfiguration aus einer externen Datei eingelesen werden, die den vollständigen 
@@ -124,7 +125,7 @@ In Anwendungen, die auf dem .NET-Hostingmodell basieren, ist die programmgesteue
 Akka.Hosting dagegen besonders vorteilhaft, da sie eine engere Integration in den Lebenszyklus des Hosts 
 und eine klar strukturierte Initialisierung des Clusters ermöglicht.
 
-\subsubsection*{HOCON File}
+\subsubsection*{HOCON-Konfiguration}
 
 In klassischen Konsolenanwendungen ist es üblich, die Akka.NET-Konfiguration in einer separaten HOCON-Datei 
 zu hinterlegen und beim Start der Anwendung einzulesen.
@@ -178,7 +179,7 @@ Die Serialisierung der Nachrichten wird mithilfe des Hyperion-Serialisierers kon
 effiziente binäre Datenrepräsentation ermöglicht und sich dadurch besonders für Clusterkommunikation eignet.
 
 Der Block \texttt{remote.dot-netty.tcp} enthält die Netzwerkkonfiguration. 
-Der Port ist auf \texttt{0} gesetzt, wodurch das System zur Laufzeit automatisch einen freien Port auswählt. 
+Der Port ist auf \texttt{0} gesetzt, wodurch zur Laufzeit ein freier Port gewählt wird. 
 Weitere Parameter wie \texttt{maximum-frame-size} oder die Puffergrößen steuern die maximale Nachrichtengröße 
 und die Netzwerkeffizienz der Punkt-zu-Punkt-Kommunikation.
 
@@ -188,17 +189,6 @@ Nach der ersten Verbindung erfolgt die weitere Clusterentdeckung über das Gossi
 Die Rollendefinition \texttt{api} legt fest, welche Aufgaben und Aktoren diesem Knoten im Clusterverbund zugeordnet sind.
 
 \subsubsection*{Akka.Hosting}
-
-um nicht immer eine Hocon-Datei reinladen zu müssen, wo gegebenfalls leichter fehler entstehen können, wurde Akka.Hosting entwickelt, 
-um die Konfiguration direkt im Code zu ermöglichen. Dies ist nützlich, da man so auch direkt in die Dependency Injection Pipeline des .NET Hostings integrieren kann.
-
-Bei meinem Projekt ist es wie schon beschrieben möglich die anwendung entweder als Monolithen als auch als verteiltes System zu starten. Daher habe ich die Konfiguration
-so wie in Abbildung~\ref{prog:hocon-hosting} gezeigt implementiert, um durch definierte Rollen die verschiedenen Komponenten des Systems zu initialisieren.
-Dies geschiedt durch parameter eingabe in der Console, die dann in der AkkaConfig Klasse ausgewertet werden. 
-
-Um die Konfiguration übersichtlich zu halten, habe ich Erweiterungsmethoden implementiert, die die Initialisierung der verschiedenen Rollen kapseln.
-Anderen Code der bestimmte initialisierung vornimmt, wie z.B. Cluster Optionen und Remote sowie die Serialisierung und Logging Konfigurationen, wurden in Erweiterungsmethoden ausgelagert.
-
 
 Anstatt die Konfiguration ausschließlich über externe HOCON-Dateien zu definieren, die beim manuellen Bearbeiten 
 anfällig für Fehler sein können, bietet Akka.Hosting die Möglichkeit, die Akka.NET-Konfiguration direkt im 
@@ -215,7 +205,6 @@ Um die Konfiguration übersichtlich und wartbar zu halten, wurden zentrale Initi
 Erweiterungsmethoden gekapselt. Diese Methoden übernehmen unter anderem die Einrichtung der Clusteroptionen, 
 der Remote-Kommunikation sowie der Serialisierungs- und Loggingkonfiguration und binden die jeweiligen Rollen 
 wie Ingress, Backend oder Coordinator in das Hostingmodell ein.
-
 
 \begin{program}[H]
 \caption{Auszug aus der Akka.Hosting-Konfiguration}
@@ -269,7 +258,7 @@ und Verwaltung relevanter Clusterzustände dezentral über spezialisierte Listen
 
 Die Methode \texttt{resolver.Props<T>()} ist eine Erweiterung von Akka.Hosting und ermöglicht die Erstellung 
 von Aktoren unter Nutzung der Dependency Injection. Mit \texttt{system.ActorOf(...)} wird der jeweilige Aktor 
-schließlich instanziert und dem ActorSystem hinzugefügt.
+schließlich instanziert und dem Aktorensystem hinzugefügt.
 
 Über \texttt{registry.Register<T>()} wird der erzeugte Aktor anschließend im internen Registry-System von 
 Akka.Hosting hinterlegt, damit er später von anderen Diensten oder Modulen abgerufen werden kann.
@@ -337,7 +326,8 @@ Entitäten zu und übernimmt damit eine zentrale Rolle in der Lastverteilung.
 Zusätzlich werden Optionen wie die automatische Passivierung inaktiver Entitäten sowie die Nutzung des
 DistributedData-Modus als Speichermechanismus für Sharding-Metadaten konfiguriert. Mit
 \texttt{RememberEntities = true} wird sichergestellt, dass Entitäten nach einem Neustart oder einem
-Rebalancing automatisch wieder aktiviert werden.
+Rebalancing sodass zuvor bekannte Entitäten nach einem Neustart oder Rebalancing automatisch
+reaktiviert werden können.
 
 \begin{program}[H]
 \caption{Auszug aus der Akka.Hosting-Backend-Konfiguration}
@@ -381,9 +371,11 @@ private static void RegisterShardRegion(this AkkaConfigurationBuilder config, Ak
 Die \textit{Ingress}-Rolle ist für den Empfang und die Vorverarbeitung der eingehenden Fahrerdaten
 zuständig. Programm~\ref{prog:hocon-hosting-ingress} zeigt einen Ausschnitt der Konfiguration dieser Rolle.
 
-Zunächst wird für die HTTP-Kommunikation mit dem Server ein Singleton-Aktor des Typs 
-\texttt{IngressHttpActor} registriert. Dieser Aktor stellt beim Start eine Verbindung zum Cloud-Server her 
-und übernimmt den Empfang der eingehenden Datenströme.
+Zunächst wird ein Singleton-Aktor des Typs \texttt{IngressHttpActor} registriert, der als Einstiegspunkt für die 
+eingehenden Telemetriedaten dient. Die Daten werden von einem vorgelagerten externen Dienst bereitgestellt, der die 
+Rohdaten aus der OpenF1-Schnittstelle bezieht und als kontinuierlichen Datenstrom zur Verfügung stellt. Der 
+\texttt{IngressHttpActor} übernimmt den Empfang dieses Datenstroms und leitet die empfangenen Nachrichten an die 
+nachgelagerte Stream-Pipeline zur weiteren Verarbeitung im Aktorensystem weiter.
 
 Anschließend wird ein ShardRegion-Proxy für die Kommunikation mit der \texttt{ShardRegion} erstellt. 
 Hierzu wird ein Marker (\texttt{DriverRegionProxyMarker}) verwendet, über den der Proxy später über die 
@@ -422,14 +414,14 @@ private static void RegisterIngress(this AkkaConfigurationBuilder config, AkkaCo
 
 \subsubsection*{Akka.Hosting Generelle Remote und Cluster Konfiguration}
 
-Damit ein AktorSystem als Clusterknoten mit anderen Systemen kommunizieren kann, müssen Remoting und 
+Damit ein Aktorensystem als Clusterknoten mit anderen Systemen kommunizieren kann, müssen Remoting und 
 Clustering konfiguriert werden. Programm~\ref{prog:hocon-hosting-remote} zeigt eine eigene 
 Erweiterungsmethode, die diese Konfiguration bündelt und von allen Rollen gemeinsam genutzt wird. 
 
 Zunächst werden Hostname und Port für das Remote-Modul gesetzt, sodass der Knoten über TCP erreichbar ist. 
 Anschließend werden die Clusteroptionen konfiguriert. Dazu gehören die Rollen des Knotens sowie die Seed Nodes, 
-über die der Cluster initial aufgebaut wird. Je nach Startkonfiguration wird entweder die vollständige Seed-Liste 
-oder nur der erste Seed Node verwendet, um eine stabile Initialisierung zu gewährleisten.
+über die der Cluster initial aufgebaut wird. Abhängig vom gewählten Startmodus wird entweder eine vollständige 
+Seed-Liste oder nur ein initialer Seed-Knoten verwendet.
 
 Für die spätere Nachrichtenverteilung zwischen unabhängigen Aktoren wird außerdem der 
 \textit{DistributedPubSub}-Mediator aktiviert. Dieser ermöglicht eine publish/subscribe-basierte Kommunikation, 
@@ -473,18 +465,19 @@ public static AkkaConfigurationBuilder UseRemoteCluster(this AkkaConfigurationBu
 \subsubsection*{Akka.Hosting Persistenzkonfiguration}
 
 Die Persistenz ist ein zentraler Bestandteil der Backend-Rolle, da der Zustand der Fahrerdaten dauerhaft 
-gesichert werden muss.Programm~\ref{prog:hocon-hosting-journal} zeigt die Einbindung der 
+gesichert werden muss. Programm~\ref{prog:hocon-hosting-journal} zeigt die Einbindung der 
 Persistence-Komponenten in das Aktorensystem mithilfe von Akka.Hosting.
 
 Die Implementierung unterstützt zwei Betriebsmodi.
 Zum einen wird eine In-Memory-Persistenz für Testläufe verwendet, die ein schnelles und reproduzierbares 
-Verhalten ohne externe Abhängigkeiten ermöglicht.Zum anderen kommt im produktiven Betrieb eine PostgreSQL-basierte 
+Verhalten ohne externe Abhängigkeiten ermöglicht. Zum anderen kommt im produktiven Betrieb eine PostgreSQL-basierte 
 Persistenz zum Einsatz. Dadurch kann der Zustand der Fahrerdaten auch über Neustarts hinweg konsistent wiederhergestellt werden.
 
 Für den Datenbankzugriff wird Npgsql eingesetzt. Über \texttt{WithSqlPersistence} wird Akka.Persistence.Sql in das 
 System integriert und automatisch mit den erforderlichen Journal- und Snapshot-Schemata initialisiert.
-Die In-Memory-Variante wird automatisch aktiv, wenn keine gültige Datenbankverbindung konfiguriert wurde, 
-wodurch die Backend-Rolle flexibel in unterschiedlichen Umgebungen betrieben werden kann.
+Die In-Memory-Variante wird aktiviert, wenn kein Connection-String für die Datenbank
+konfiguriert wurde (leerer Connection String), wodurch die Backend-Rolle flexibel
+in unterschiedlichen Umgebungen betrieben werden kann.
 
 
 \begin{program}[H]
@@ -531,25 +524,98 @@ private static void RegisterBackendJournal(this AkkaConfigurationBuilder config,
 
 \section{Eingangs-Service}
 
-Datenabgriff von OpenF1
-Datenabgriff von OpenF1
-Normalisierung der Daten
-Übergabe an Streams
-Retry-Strategien
-Fehlerbehandlung
+Der Eingangs-Service bildet den Einstiegspunkt in die Datenverarbeitung und empfängt Telemetriedaten über eine
+dauerhafte Verbindung zu einem externen Datenprovider. Die Bereitstellung der Telemetriedaten erfolgt dabei über
+einen vorgelagerten Dienst, der die Rohdaten aus einer externen Quelle (z.\,B. OpenF1) bezieht und als kontinuierlichen
+Datenstrom bereitstellt. Dieser vorgelagerte Dienst ist nicht Bestandteil dieser Arbeit, er dient ausschließlich als
+Datenquelle für die Evaluation der entwickelten Stream- und Clusterarchitektur.
+
+Zur Einspeisung der eingehenden Daten wird eine Pipeline mit Akka.Streams aufgebaut. Nach der Materialisierung des 
+Stream-Graphs steht eine \texttt{SourceQueue} als Einspeisepunkt zur Verfügung. Über diese Queue können neue Elemente 
+kontrolliert in den Stream eingebracht werden. Durch die gewählte Overflow-Strategie Backpressure wird der Produzent 
+automatisch verlangsamt, sobald nachgelagerte Verarbeitungsschritte die Daten nicht schnell genug verarbeiten können.
+
+\begin{program}[H]
+\caption{Stream-Einspeisung der Daten}
+\label{prog:stream-queue-offer}
+\begin{CsCode}
+await _queue.OfferAsync(dto);
+\end{CsCode}
+\end{program}
 
 \section{Datenbearbeitung mit Akka.Streams}
 
-Aufbau des Stream-Graphs
-Flow → Map → Filter → Buffer → Sink
-Backpressure im konkreten System
-Overflowstrategien (Verweis auf Kapitel 3)
-Materialization
+Für den Aufbau der Verarbeitungspipeline wird die GraphDSL-API von Akka.Streams verwendet, um den Stream-Graphen 
+explizit zu definieren. Beim Start werden mehrere Worker-Aktoren instanziiert, welche die Weiterleitung der 
+eingehenden Daten an die ShardRegion übernehmen. Zur Lastverteilung werden die Worker als parallele Senken in den 
+Stream integriert und über eine \texttt{Balance}-Stufe angebunden.
+
+Die \texttt{Balance}-Stufe verteilt eingehende Elemente demand-basiert auf die verfügbaren nachgelagerten 
+Verarbeitungsstufen. Durch \texttt{waitForAllDownstreams = true} wird sichergestellt, dass die Verteilung erst beginnt, 
+nachdem alle nachgelagerten Stufen initiale Nachfrage signalisiert haben. Die anschließende Verteilung erfolgt nicht 
+strikt im Round-Robin-Verfahren, sondern abhängig von der jeweils anliegenden Nachfrage beziehungsweise dem aktuellen 
+Backpressure-Zustand der einzelnen Worker.
+
+Zur Einspeisung externer Daten in die Verarbeitungspipeline wird eine \texttt{Source.Queue} als Einstiegspunkt des 
+Streams verwendet. Diese Queue stellt einen asynchronen Übergabepunkt zwischen der Socket-basierten Datenquelle und 
+der internen Stream-Verarbeitung dar. Die gewählte Puffergröße begrenzt die Anzahl zwischengespeicherter Elemente, 
+während die Overflow-Strategie \texttt{Backpressure} sicherstellt, dass der Produzent automatisch verlangsamt wird, 
+sobald der Puffer ausgelastet ist und nachgelagerte Verarbeitungsschritte die Daten nicht schnell genug verarbeiten 
+können.
+
+Zur Unterstützung von Backpressure wird für die Worker-Aktoren eine Sink-Stufe mit Acknowledgement-Mechanismus 
+eingesetzt. Mittels \texttt{Sink.ActorRefWithAck} wird jedes Element erst dann als verarbeitet betrachtet, wenn der 
+jeweilige Worker eine Bestätigung (\texttt{ack}) zurückmeldet. Dadurch wird verhindert, dass schneller produziert wird 
+als verarbeitet werden kann, und der Datenfluss bleibt auch unter Last stabil.
+
+Nach der Definition des Graphen erfolgt die Materialisierung, wodurch die Stream-Komponenten initialisiert und die 
+Verbindungen zwischen den einzelnen Stufen hergestellt werden. Anschließend können neue Elemente über die materialisierte 
+\texttt{SourceQueue} in den Stream eingespeist werden (vgl.\ Programm~\ref{prog:stream-queue-offer}).
+
+
+\begin{program}[H]
+\caption{Aufbau und Materialisierung des Stream-Graphs}
+\label{prog:stream-graph}
+\begin{CsCode}
+var source = Source.Queue<IOpenF1Dto>(
+    bufferSize: 8192,
+    overflowStrategy: OverflowStrategy.Backpressure);
+
+var kill = KillSwitches.Single<IOpenF1Dto>();
+
+var graph = RunnableGraph.FromGraph(GraphDsl.Create(
+    source, kill,
+    (q, ks) => (q, ks),
+    (builder, src, ks) =>
+    {
+        var balancer = builder.Add(
+            new Balance<IOpenF1Dto>(workers.Count, waitForAllDownstreams: true));
+
+        builder.From(src).Via(builder.Add(ks)).To(balancer.In);
+
+        for (int i = 0; i < workers.Count; i++)
+        {
+            var sink = Sink.ActorRefWithAck<IOpenF1Dto>(
+                workers[i],
+                onInitMessage: StreamInit.Instance,
+                ackMessage: StreamAck.Instance,
+                onCompleteMessage: StreamCompleted.Instance,
+                onFailureMessage: ex => new StreamFailed(ex));
+
+            builder.From(balancer.Out(i)).To(sink);
+        }
+
+        return ClosedShape.Instance;
+    }));
+
+var (queue, ks) = graph.Run(_mat);
+\end{CsCode}
+\end{program}
 
 \section{Verarbeitung in der ShardRegion}
 
 Der \texttt{DriverActorPersistent} bildet die zentrale Komponente zur konsistenten Verwaltung des Zustands eines einzelnen 
-Fahrers innerhalb einer \texttt{ShardRegion}.Durch die Ableitung von \texttt{ReceivePersistentActor} besitzt er die Fähigkeit, 
+Fahrers innerhalb einer \texttt{ShardRegion}. Durch die Ableitung von \texttt{ReceivePersistentActor} besitzt er die Fähigkeit, 
 Zustandsänderungen als Ereignisse (Events) dauerhaft zu persistieren. Diese Persistenzmechanismen ermöglichen es dem Aktor, 
 seinen vollständigen Zustand bei einem Neustart, einem Ausfall einzelner Clusterknoten oder einem Rebalancing des Clusters 
 zuverlässig wiederherzustellen.
@@ -607,7 +673,7 @@ private void RecoverState()
 
 \subsection{Initialisierung des Aktors}
 
-Solange der Aktor noch nicht initialisiert wurde, befindet er sich im Verhalten \texttt{Uninitialized}.Dieser Zustand wird 
+Solange der Aktor noch nicht initialisiert wurde, befindet er sich im Verhalten \texttt{Uninitialized}. Dieser Zustand wird 
 im Konstruktor über \texttt{Become(Uninitialized)} aktiviert. Die Methode \texttt{Become} ersetzt sämtliche bisher 
 registrierten Nachrichtenhandler und ermöglicht damit ein dynamisches, zustandsabhängiges Verhalten des Aktors.
 
@@ -632,7 +698,7 @@ private void Uninitialized()
             try
             {
                 _state.Apply(evt);
-                _logger.Info(\$"Initialized driver {_state.ToDriverInfoString()})");
+                _logger.Info(\$"Initialized driver {_state.ToDriverInfoString()}");
                 Sender.Tell(new Status.Success(CreatedDriverMessage.Success(_state.Key)));
                 Become(Initialized);
             }
@@ -762,11 +828,12 @@ Damit ein Aktor Nachrichten über den Mediator empfangen kann, muss er sich mit 
 implementiert, die die Anmeldung beim Mediator übernimmt. Alle Aktoren, die Nachrichten über ein Topic 
 empfangen sollen, erben von dieser Basisklasse.
 
-Während der Anmeldephase werden eingehende Nachrichten zunächst gestasht, bis alle erwarteten Bestätigungen 
-(\texttt{SubscribeAck}) eingetroffen sind. Erst danach wird das eigentliche Verhalten des Aktors aktiviert 
-und die gestashten Nachrichten werden verarbeitet. Um zusätzlich Gruppenkommunikation zu unterstützen, 
-erfolgt neben der Anmeldung am Topic eine weitere Anmeldung mit einer generierten Gruppen-ID. Dadurch können 
-mehrere Aktoren dieselben Nachrichten erhalten, wenn sie mit derselben Gruppen-ID registriert sind.
+Während der Anmeldephase werden eingehende Nachrichten zunächst gestasht, bis eine Bestätigung
+(\texttt{SubscribeAck}) des \texttt{DistributedPubSub}-Mediators eingetroffen ist. Erst danach wird das
+eigentliche Verhalten des Aktors aktiviert und die gestashten Nachrichten werden verarbeitet. Um zusätzlich
+Gruppenkommunikation zu unterstützen, erfolgt neben der Anmeldung am Topic eine weitere Anmeldung mit einer
+generierten Gruppen-ID. Dadurch können mehrere Aktoren dieselben Nachrichten erhalten, wenn sie mit derselben
+Gruppen-ID registriert sind.
 
 \begin{program}[H]
 \caption{Auszug aus der Basisklasse für PubSub-Empfänger}
@@ -993,7 +1060,7 @@ ShardRegion zuverlässig zu bestimmen. Grundlage hierfür bilden die in Akka.NET
 Gossip-Protokoll sowie die Erreichbarkeitsüberwachung mittels periodischer Herzschlagsignale.
 
 Akka.NET verbreitet Clusterzustände kontinuierlich über Gossip-Nachrichten, die in regelmäßigen Intervallen zufällig zwischen den Knoten 
-ausgetauscht werden. Auf diese Weise konvergiert der Wissenstand aller Clusterteilnehmer sukzessive zu einer gemeinsamen Sicht auf den 
+ausgetauscht werden. Auf diese Weise konvergiert der Wissensstand aller Clusterteilnehmer sukzessive zu einer gemeinsamen Sicht auf den 
 Systemzustand, ohne dass ein zentraler Koordinator erforderlich ist. Parallel dazu überwacht das Cluster-Subsystem die Erreichbarkeit der 
 einzelnen Knoten anhand von Heartbeats. Bleiben diese über einen bestimmten Zeitraum aus oder treten nur noch unregelmäßig auf, wird der 
 entsprechende Knoten zunächst als \texttt{Unreachable} markiert. Persistiert dieser Zustand, stuft das Cluster den Knoten als ausgefallen 
@@ -1048,7 +1115,7 @@ Die Oberfläche ist in mehrere Bereiche gegliedert:
         von Messungen, Wechsel des Rennens oder der Pipeline-Konfiguration).
 \end{itemize}
 
-Der Client kommuniziert hierzu direkt mit dem Cluster und bezieht sowohl Systemmetriken (z.,B. Cluster- und Shard-Zustand) als auch domänenspezifische Daten. 
+Der Client kommuniziert hierzu direkt mit dem Cluster und bezieht sowohl Systemmetriken (z.\,B. Cluster- und Shard-Zustand) als auch domänenspezifische Daten. 
 Er ist nicht als Endanwenderoberfläche konzipiert, sondern als leichtgewichtige Monitoring- und Debugging-Komponente, die es ermöglicht, die Funktionsweise 
 des verteilten Systems im Rahmen dieser Arbeit transparent und nachvollziehbar darzustellen.
 
@@ -1063,28 +1130,27 @@ Nach dem Start des Clusters initialisieren sich die beteiligten Knoten entsprech
 den Backend-Knoten gestartet und übernimmt die Verwaltung der persistierten Fahrerinstanzen (DriverActorPersistent). Parallel dazu 
 verbinden sich die Ingress-Knoten mit dem ClusterCoordinator, um Informationen über die Verfügbarkeit der ShardRegion zu erhalten.
 
-Sobald sowohl die ShardRegion als auch mindestens ein Ingress-Knoten verfügbar sind, erteilt der ClusterCoordinator die Freigabe 
+Sobald mindestens eine ShardRegion verfügbar und ein Ingress-Knoten aktiv ist, erteilt der ClusterCoordinator die Freigabe 
 für die Weiterleitung von Daten vom Ingress an die ShardRegion. Wählt der Monitoring-Client anschließend ein Rennen aus, erhält der 
 Ingress-Dienst die Anweisung, die entsprechenden Telemetriedaten über OpenF1 zu beziehen und in einen Akka.Streams-Graph einzuspeisen. Innerhalb 
 des Stream-Graphs werden die Rohdaten aufbereitet und in ein einheitliches Nachrichtenformat konvertiert, das von der ShardRegion 
 verarbeitet werden kann.
 
 Die konvertierten Nachrichten werden anschließend über den ShardRegionProxy an die ShardRegion übermittelt. Diese prüft die 
-Nachricht und ordnet sie anhand der Fahrer-ID der zuständigen DriverActorPersistent-Instanz zu. Der Actor verarbeitet die eingehende 
-Nachricht, aktualisiert seinen Zustand, persistiert die Änderungen und sendet schließlich eine aktualisierte Fahrerdaten an den 
+Nachricht und ordnet sie anhand der Fahrer-ID der zuständigen DriverActorPersistent-Instanz zu. Der Aktor verarbeitet die eingehende 
+Nachricht, aktualisiert seinen Zustand, persistiert die Änderungen und sendet schließlich aktualisierte Fahrerdaten an den 
 Monitoring-Client.
 
 \subsection{Ablauf aus Sicht der Datenübertragung}
 
-Der Datenfluss beginnt im Ingress-Service, der die Telemetriedaten von OpenF1 kontinuierlich abruft und in einen Akka.Streams-Graph überführt. Innerhalb 
-des Stream-Graphs werden die Daten gefiltert, normalisiert und für die Weiterverarbeitung strukturiert. Durch den Einsatz von Backpressure wird verhindert, 
-dass nachgelagerte Komponenten überlastet werden.
+Der Datenfluss beginnt im Ingress-Service, der einen kontinuierlichen Telemetriedatenstrom vom vorgelagerten Datenprovider entgegennimmt 
+(z.\,B. basierend auf OpenF1) und in einen Akka.Streams-Graph überführt.
 
-Die Übergabe an die ShardRegion erfolgt über einen ShardRegionProxy. Dieser verteilt die Nachrichten in Round-Robin-Manier an jene 
-Backend-Knoten, deren ShardRegion-Instanzen aktuell bereit sind, um eingehende Nachrichten zu verarbeiten. Die ShardRegion bestimmt 
-anhand der Fahrer-ID die zuständige Entity (DriverActorPersistent) und leitet die Nachricht weiter. Die Entity aktualisiert ihren persistenten 
-Zustand und sendet anschließend über den registrierten Event-Handler eine aktualisierte Fahrerdatenbenachrichtigung an den Monitoring-Client. Durch diese 
-Entkopplung wird sowohl Skalierbarkeit als auch Stabilität des Gesamtsystems gewährleistet.
+Die Übergabe an die ShardRegion erfolgt über einen ShardRegionProxy. Der Proxy stellt einen transparenten Zugriff auf
+die ShardRegion bereit, ohne dass die Ingress-Komponenten an eine konkrete physische Instanz gebunden sind. Die Zuordnung
+der Nachrichten zu Shards und Entitäten erfolgt über den \texttt{MessageExtractor} auf Basis der Fahrer-ID. Dadurch werden
+Nachrichten deterministisch an die zuständige Entity (\texttt{DriverActorPersistent}) geroutet, die Platzierung der Shards
+auf Backend-Knoten wird durch Cluster Sharding verwaltet und kann sich durch Rebalancing dynamisch ändern.
 
 \subsection{Ablauf aus Sicht der Fehlertoleranz}
 
@@ -1099,5 +1165,5 @@ Erreichbarkeitssituation der ShardRegion benachrichtigt. Solange keine funktions
 keine Daten an den Cluster, wodurch inkonsistente Zustände und Nachrichtenverluste verhindert werden.
 
 Fällt eine einzelne \texttt{DriverActorPersistent}-Instanz aus, wird diese von der ShardRegion automatisch neu gestartet. Aufgrund der Persistierung 
-ihres vorherigen Zustands kann die Actor-Instanz ihren letzten konsistenten Zustand rekonstruieren und die Verarbeitung fortsetzen, ohne dass Daten verloren 
+ihres vorherigen Zustands kann die Aktor-Instanz ihren letzten konsistenten Zustand rekonstruieren und die Verarbeitung fortsetzen, ohne dass Daten verloren 
 gehen oder eine manuelle Wiederherstellung erforderlich ist.

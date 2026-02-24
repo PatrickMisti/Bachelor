@@ -1,13 +1,52 @@
 \chapter{Einleitung}
-demo noch driverdaten anzeigen programmieren
-\section{Motivation}
-Diese Bachelorarbeit beschäftigt sich mit dem Thema \emph{...}.
-Ziel ist es, die Problemstellung zu analysieren, Methoden zu vergleichen
-und ein eigenes Konzept zu entwickeln.
 
-Die Motivation ergibt sich aus ...
-Na servus
+Moderne Softwaresysteme stehen zunehmend vor der Herausforderung, kontinuierlich anfallende Datenströme 
+performant, skalierbar und fehlertolerant zu verarbeiten \parencite{boner2014reactivemanifesto,kuhn2017reactivedesignpatterns}. 
+Insbesondere in datenintensiven Anwendungsdomänen wie der Analyse von Telemetriedaten entstehen hochfrequente Datenströme, 
+die in Echtzeit erfasst, verarbeitet und bereitgestellt werden müssen. Klassische monolithische Architekturen 
+stoßen hierbei schnell an ihre Grenzen, da sie nur begrenzt skalierbar sind und eine geringe Fehlertoleranz 
+aufweisen \parencite{kuhn2017reactivedesignpatterns}.
+
+Reaktive Architekturen auf Basis des Aktorenmodells bieten einen vielversprechenden Ansatz zur Bewältigung 
+dieser Anforderungen \parencite{boner2014reactivemanifesto}. Durch lose Kopplung, natürliche Parallelisierung sowie eingebaute Fehlertoleranz 
+eignen sie sich besonders für die Verarbeitung kontinuierlicher Datenströme. Frameworks wie Akka.NET ermöglichen 
+die Entwicklung verteilter Aktorensysteme, während Akka.Streams reaktive Datenpipelines mit integrierten 
+Backpressure-Mechanismen bereitstellt \parencite{kuhn2017reactivedesignpatterns}. In Kombination mit Cluster Sharding können zustandsbehaftete Entitäten 
+über mehrere Knoten verteilt und dynamisch skaliert werden \parencite{kuhn2017reactivedesignpatterns}.
+
+\section{Motivation}
+
+Die Motivation dieser Arbeit ergibt sich aus der Notwendigkeit, kontinuierliche Telemetriedaten effizient und 
+skalierbar zu verarbeiten. Im Kontext des Motorsports fallen während eines Rennens große Mengen an Daten an, 
+beispielsweise Positions-, Geschwindigkeits- und Zustandsinformationen einzelner Fahrzeuge. Diese Daten müssen 
+in Echtzeit verarbeitet werden, um aktuelle Rennsituationen analysieren und visualisieren zu können.
+
+Gleichzeitig müssen solche Systeme auch unter hoher Last stabil bleiben und Ausfälle einzelner Komponenten 
+kompensieren können. Verteilte Aktorensysteme in Kombination mit streambasierter Datenverarbeitung stellen 
+hierfür einen geeigneten Ansatz dar.
 
 \section{Aufgabenstellung}
+
+Ziel dieser Arbeit ist die Konzeption und Implementierung eines verteilten, aktorenbasierten 
+Stream-Verarbeitungssystems zur Verarbeitung kontinuierlicher Telemetriedaten. Dabei soll ein System entwickelt 
+werden, das eingehende Datenströme zuverlässig empfängt, verarbeitet und innerhalb eines Clusterverbunds verteilt bereitstellt.
+
+Die Architektur basiert auf dem Akka.NET-Framework und integriert zentrale Konzepte wie Cluster Sharding, reaktive 
+Stream-Verarbeitung mit Backpressure sowie eine koordinierte Kommunikation zwischen den Systemkomponenten.
+
 \section{Ziel der Arbeit}
+
+Das Ziel der Arbeit besteht in der Entwicklung und prototypischen Umsetzung einer skalierbaren und fehlertoleranten 
+Architektur zur Echtzeitverarbeitung von Telemetriedaten. Es soll gezeigt werden, wie durch den Einsatz von Akka.NET, 
+Akka.Streams und Cluster Sharding eine verteilte Verarbeitung kontinuierlicher Datenströme realisiert werden kann.
+
+Darüber hinaus soll die entwickelte Architektur hinsichtlich ihrer Eignung für reaktive Systeme bewertet und ihre 
+Erweiterbarkeit für zukünftige Anwendungen aufgezeigt werden.
+
 \section{Vorgehensweise}
+
+Zu Beginn werden die theoretischen Grundlagen zu reaktiven Systemen, dem Aktorenmodell sowie der Stream-Verarbeitung 
+erläutert. Darauf aufbauend erfolgt die Konzeption der Systemarchitektur, in der die Rollen der Cluster-Komponenten 
+definiert und deren Zusammenspiel beschrieben werden. Anschließend wird die Implementierung des Systems detailliert 
+vorgestellt. Abschließend werden Tests und Analysen durchgeführt, um das Verhalten des Systems hinsichtlich Skalierbarkeit, 
+Fehlertoleranz und Leistungsfähigkeit zu evaluieren.

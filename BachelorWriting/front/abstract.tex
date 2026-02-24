@@ -2,7 +2,33 @@
 
 
 \begin{english} %switch to English language rules
-This should be a 1-page (maximum) "summary" of your work in English.
+In this thesis, Akka.NET was evaluated based on a concrete use case involving the processing
+of Formula 1 telemetry data. The goal of the use case was to capture continuously incoming
+race data, process it, and transform it into a suitable data structure that can be provided
+in a resilient and fault-tolerant manner.
+
+A central focus was the design of an architecture capable of maintaining reliable data
+processing even in the presence of errors or node failures. By leveraging the actor model,
+asynchronous message passing, and cluster sharding, a distributed system was implemented
+that consistently handles streaming data and manages state changes in a robust way.
+The resulting structure proved to be particularly effective with respect to fault tolerance
+and state recovery after system crashes.
+
+During the implementation, it became evident that configuring and operating a distributed
+Akka.NET cluster requires considerable effort. In particular, the correct setup and tuning
+of cluster, sharding, and persistence components demanded extensive configuration work.
+This complexity can partly be attributed to the comparatively lower popularity of Akka.NET
+compared to other streaming or microservice technologies, which results in fewer practical
+resources and examples.
+
+However, the evaluation shows that Akka.NET is especially well suited for scenarios in which
+frequent state updates must be processed in real time. The combination of asynchronous actor
+communication, built-in fault tolerance, and automatic state recovery enables stable and
+resilient data processing even under high load or partial system failures.
+
+Another important advantage is the support for remote and distributed execution. This allows
+the system to utilize resources across multiple machines, enabling horizontal scalability and
+a more efficient use of available computational resources.
 % ...
 \end{english}
 

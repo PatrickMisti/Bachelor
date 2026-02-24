@@ -238,7 +238,7 @@ wodurch eine hohe Verfügbarkeit gewährleistet bleibt \parencite{getakka_single
 
 Um auf den Cluster-Singleton zugreifen zu können, wird ein Singleton-Proxy verwendet. Dieser ermöglicht es allen 
 Komponenten innerhalb des Clusters, Nachrichten an den Singleton zu senden, ohne dessen tatsächlichen Ausführungsort 
-kennen zu müssen. Die Identifikation erfolgt über einen definierten Marker, sodass keine explizite AKtor- oder 
+kennen zu müssen. Die Identifikation erfolgt über einen definierten Marker, sodass keine explizite Aktor- oder 
 Netzwerkadresse notwendig ist.
 
 Falls der Singleton vorübergehend nicht erreichbar ist, werden eingehende Nachrichten im Proxy gepuffert und nach 
@@ -280,7 +280,7 @@ der sicherstellt, dass nur so viele Elemente produziert werden, wie tatsächlich
 Ein zentrales Prinzip ist dabei der integrierte Rückstau-Mechanismus (Backpressure). Dieser Mechanismus sorgt dafür, dass Produzenten 
 automatisch verlangsamt werden, sobald nachgelagerte Verarbeitungsschritte oder Konsumenten die eingehenden Daten nicht in ausreichender 
 Geschwindigkeit verarbeiten können. Backpressure ist ein Kernelement der Reactive-Streams-Spezifikation, auf der Akka.Streams basiert, 
-und stellt sicher, dass das System auch unter hoher Last stabil und vorhersehbar arbeitet \parencite{reactive_streams_spec, akka_streams_docs}.
+und stellt sicher, dass das System auch unter hoher Last stabil und vorhersehbar arbeitet \parencite{reactive_streams_spec}.
 
 \subsection{Overflowstrategien}
 

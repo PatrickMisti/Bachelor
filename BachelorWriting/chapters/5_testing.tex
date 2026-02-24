@@ -1,137 +1,134 @@
 \chapter{Tests und Analysen}
 
-in diesem Kapitel werden die durchgeführeten Tests und Analysen beschreiben, um genaueren Einblick in die Funktionsweise und Leistungsfähigkeit des entwickelten Systems zu geben.
-desweiteren werden die Ergebnisse dieser Tests diskutiert und bewertet. Als kleinen einspieler wird zunächst die Teststrategie und die Testumgebung erläutert.
-
-
 In diesem Kapitel werden die durchgeführten Tests und Analysen beschrieben, um einen detaillierten Einblick in die 
-Funktionsweise, Zuverlässigkeit und Leistungsfähigkeit des entwickelten Systems zu ermöglichen. Darüber hinaus werden 
-die erzielten Ergebnisse diskutiert und bewertet. Als Grundlage für die anschließenden Auswertungen werden zunächst die 
+Funktionsweise, Zuverlässigkeit und Leistungsfähigkeit des entwickelten Systems zu geben. Darüber hinaus werden die 
+erzielten Ergebnisse diskutiert und bewertet. Als Grundlage für die anschließenden Auswertungen werden zunächst die 
 verwendete Teststrategie sowie die Testumgebung erläutert.
 
 \section{Teststrategie und Testumgebung}
 
-Es wurden verschiedene Arten von Tests durchgeführt um die Funktionalität und Leistungsfähigkeit der einzelen Komponenten die im System verwendet werden zu überprüfen.
-Das wurde gemacht um die funktionalen Anforderungen zu testen und um zu testen wie sich die einzelen Komponenten unter verschiedenen Bedingungen verhalten.
-Da das System zwei Hauptkomponenten hat einerseits von Akka.NET ShardRegion und andererseits Akka.NET Streams wurden die Tests in diese zwei Bereiche unterteilt.
-Sie wurden in funktionale Tests, Failover-Tests??? und Performance-Tests unterteilt.
+Zur Überprüfung der Funktionsfähigkeit und Robustheit des Systems wurden unterschiedliche Testarten eingesetzt. 
+Diese Tests dienen sowohl der Validierung der funktionalen Anforderungen als auch der Analyse des Verhaltens der 
+einzelnen Komponenten unter verschiedenen Betriebsbedingungen. Da das Gesamtsystem im Wesentlichen aus zwei 
+zentralen Technologiebereichen besteht – der Akka.NET \texttt{ShardRegion} und der Datenverarbeitung über 
+Akka.NET Streams – wurden die Testfälle entsprechend auf diese Bereiche abgestimmt.
 
-Um die Tests über Aktoren zu testen wurde das TestKit von Akka.NET verwendet. Durch das TestKit kann man Aktoren in einer Kontrollierten, aber dennoch realistischen Umgebung testen.
-
-
-
-
-
-Zur Überprüfung der Funktionsfähigkeit und Robustheit des Systems wurden unterschiedliche Testarten eingesetzt. Diese 
-Tests dienen sowohl der Validierung der funktionalen Anforderungen als auch der Analyse des Verhaltens einzelner 
-Komponenten unter unterschiedlichen Betriebsbedingungen. Da das Gesamtsystem im Wesentlichen aus zwei zentralen 
-Technologiebereichen besteht – der Akka.NET \texttt{ShardRegion} und der Datenverarbeitung über Akka.NET Streams – 
-wurden die Testfälle entsprechend in diese beiden Bereiche strukturiert.
-
-Die durchgeführten Tests lassen sich in folgende Kategorien einteilen:
+Die durchgeführten Tests lassen sich in drei Kategorien einteilen:
 
 \begin{itemize}
     \item \textbf{Funktionale Tests}: Überprüfung der korrekten Verarbeitung, Persistierung und Weiterleitung der Daten.
-    \item \textbf{Failover- und Resilienztests}: Analyse des Systemverhaltens bei Node-Ausfällen, 
-          unerreichbaren Clusterknoten und Neustarts der persistierten Entitäten.
-    \item \textbf{Performance- und Durchsatztests}: Bewertung der Effizienz der Datenverarbeitung, der Stream-Pipelines 
-          sowie der Systemauslastung unter Last.
+    \item \textbf{Failover- und Resilienztests}: Analyse des Systemverhaltens bei Node-Ausfällen, unerreichbaren 
+          Clusterknoten sowie Neustarts der persistierten Entitäten.
+    \item \textbf{Performance- und Durchsatztests}: Bewertung der Effizienz der Stream-Pipelines sowie des 
+          Systemverhaltens unter Last.
 \end{itemize}
 
-Für die Tests auf Actor-Ebene wurde das Akka.NET \texttt{TestKit} eingesetzt, das eine kontrollierte, aber dennoch 
-realitätsnahe Umgebung zur Überprüfung von Actor-Interaktionen, Nachrichtenflüssen und internen Zustandsänderungen bietet.
+Für die Tests auf Actor-Ebene wurde das Akka.NET \texttt{TestKit} eingesetzt. Dieses ermöglicht das Testen von 
+Aktor-Interaktionen, Nachrichtenflüssen und Zustandsänderungen in einer kontrollierten, aber dennoch realitätsnahen 
+Umgebung.
 
-
-
-
-Hier beschreibst du:
-
-Welche Arten von Tests du durchgeführt hast (funktional, Failover, Performance, Lasttests)
-
-Welche Tools (Konsole, Logs, Benchmarks, eigene Mess-Actor)
-
-Umgebung:
-
-Hardware
-Anzahl Clusterknoten
-Konfiguration (Rollen, Seeds, Ports)
-Akka.NET-Version
-Testdaten (OpenF1 → Live vs. Sample-Daten)
-Messmethoden (z. B. Stopwatch, eigene Metrics-Aktoren, Streams-Metriken)
-
-Das ist der Methodik-Teil.
 \section{Funktionale Tests}
-Wird die ShardRegion korrekt erstellt?
 
-Werden Entities korrekt initialisiert?
+Im Rahmen der funktionalen Tests wurde die korrekte Initialisierung und Zusammenarbeit der zentralen Cluster-Komponenten überprüft. 
+Dabei wurde verifiziert, dass die ShardRegion erfolgreich erstellt wird und die Kommunikation zwischen mehreren Instanzen 
+(Cluster-Knoten) erwartungsgemäß funktioniert.
 
-Werden Daten vom Ingress korrekt weitergeleitet?
+Weiterhin wurde das Verhalten der Driver-Entities in verschiedenen Zuständen getestet. Insbesondere wurde geprüft, dass ein 
+\texttt{DriverActorPersistent} vor der Initialisierung eingehende Nachrichten korrekt ablehnt und eine entsprechende Rückmeldung 
+liefert. Nach erfolgreicher Initialisierung werden Telemetrie- und Zustandsupdates akzeptiert, persistiert und der interne Zustand 
+konsistent aktualisiert.
 
-Persistiert der DriverActorPersistent richtig?
-
-Kommt die Rückmeldung beim Monitoring-Client korrekt an?
-
-Verhalten bei falschen Daten / ungültigen IDs
+Zusätzlich wurde validiert, dass verarbeitete Driver-Daten korrekt an nachgelagerte Komponenten weitergeleitet werden, 
+insbesondere an die API- bzw. Monitoring-Schnittstelle. Für Fehlerszenarien wurde geprüft, dass ungültige oder nicht zum Entity 
+passende IDs zuverlässig erkannt werden und keine inkonsistenten Zustände entstehen.
 
 \section{Verhalten bei Node-Ausfällen und Neuausrichtung}
-Test „Backend fällt aus“ → Erwartung:
 
-ShardListener erkennt Ausfall
+Zur Bewertung der Fehlertoleranz des verteilten Systems wurden Szenarien mit ausfallenden und wieder hinzukommenden Cluster-Knoten 
+untersucht. Dabei wurde insbesondere das Verhalten der ShardRegion sowie die Koordination durch den ClusterCoordinator analysiert.
 
-ClusterCoordinator deaktiviert Ingress
+Fällt ein Backend-Knoten aus, wird dies durch die Cluster-Mitgliedsüberwachung erkannt. Solange mindestens eine 
+ShardRegion im Cluster verfügbar ist, wird die Verarbeitung weiterhin fortgesetzt und die betroffenen Shards werden 
+auf verbleibende Knoten umverteilt (Rebalancing). Erst wenn keine ShardRegion mehr vorhanden ist, deaktiviert der 
+ClusterCoordinator den Ingress-Dienst temporär, um eingehende Daten nicht an nicht verfügbare Backend-Komponenten 
+weiterzuleiten.
 
-ShardRegion wird umgezogen oder steht vorübergehend nicht zur Verfügung
+Beim erneuten Hinzukommen eines Knotens werden die Shards neu gestartet und in den Cluster integriert. Die Persistenzmechanismen der 
+\texttt{DriverActorPersistent}-Instanzen sorgen dabei dafür, dass der zuvor gespeicherte Zustand aus dem Journal beziehungsweise 
+Snapshot wiederhergestellt wird. Dadurch bleibt der Zustand der Driver-Entities konsistent, und es gehen keine bereits verarbeiteten 
+Telemetriedaten verloren.
 
-Test „Node kommt zurück“
+Die Tests zeigen, dass das System Ausfälle einzelner Knoten korrekt erkennt, ein Rebalancing der Shards durchführt und nach 
+Wiederherstellung der Knoten den persistierten Zustand zuverlässig lädt. Damit wird eine hohe Fehlertoleranz und Zustandskonsistenz 
+im Clusterbetrieb gewährleistet.
 
-Wiederherstellung
-
-Shard-Neustart
-
-Rebalance
-
-Test „Actor fällt aus“
-
-Persistierter Zustand wird wiederhergestellt
-
-Keine Daten gehen verloren
 \section{Leistungsanalyse und Bewertung der Stream-Strategien}
-Verschiedene Stream-Konfigurationen:
 
-Buffergrößen
+\subsection{Versuchsaufbau und Messgrößen}
 
-Batchgrößen
+Zur Untersuchung der Leistungsfähigkeit der implementierten Stream-Pipeline wurden experimentelle Messungen unter kontrollierten 
+Bedingungen durchgeführt. Hierzu wurde ein synthetischer Datenstrom mit einer festen Anzahl von 4000 Elementen erzeugt und durch 
+eine Akka.Streams-Pipeline geleitet. Die Pipeline enthielt einen konfigurierbaren Puffer mit einer Größe von 50 Elementen sowie 
+eine simulierte Verarbeitungsverzögerung von 2\,ms pro Element, um das Verhalten realer Telemetriedatenverarbeitung nachzubilden.
 
-Supervisor-Strategien
+Als zentrale Messgrößen wurden der Durchsatz in Nachrichten pro Sekunde sowie die Latenzverteilung erfasst. Die Latenz wurde als 
+Zeitdifferenz zwischen Erzeugung und Verarbeitung eines Elements bestimmt. Zur detaillierten Analyse wurden die Perzentile p50, 
+p95 und p99 der Latenzverteilung berechnet. Zusätzlich wurde die Anzahl der tatsächlich verarbeiteten Elemente ermittelt, um 
+mögliche Nachrichtenverluste in Abhängigkeit von der gewählten Overflow-Strategie zu quantifizieren.
 
-Backpressure-Verhalten
+\subsection{Vergleich der Overflow-Strategien}
 
-Messungen:
+Zur Bewertung der unterschiedlichen Overflow-Strategien wurden Durchsatz, Latenz und Nachrichtenverluste gemessen. 
+Verglichen wurden die Strategien \texttt{Backpressure}, \texttt{DropNew}, \texttt{DropHead} und \texttt{DropTail}. 
+Der Test verwendete einen Datenstrom von 4000 Elementen bei einer simulierten Verarbeitungszeit von 2\,ms pro Element 
+und einer Puffergröße von 50 Elementen.
 
-Throughput (msgs/s)
+Der gemessene Durchsatz lag bei allen Strategien mit etwa 64 Nachrichten pro Sekunde auf einem ähnlichen Niveau. 
+Dies zeigt, dass der Durchsatz primär durch die Verarbeitungsgeschwindigkeit der Pipeline und weniger durch die 
+gewählte Overflow-Strategie bestimmt wird.
 
-Latenzen (p50, p95, p99)
+Deutliche Unterschiede zeigen sich bei der Anzahl verarbeiteter Elemente. Während Backpressure alle 4000 Elemente 
+verlustfrei verarbeiten konnte, wurden bei den Drop-Strategien jeweils nur etwa 51 Elemente verarbeitet, da neue 
+Elemente bei ausgelastetem Puffer verworfen werden.
 
-CPU / RAM-Auslastung
+Auch die Latenz unterscheidet sich deutlich: Backpressure weist mit einem Median von etwa 322\,ms und p95-Werten 
+über 600\,ms höhere Latenzen auf, bedingt durch Warteschlangen im Puffer. Die Drop-Strategien erreichen dagegen 
+niedrige Latenzen zwischen 11 und 21\,ms, da nur ein kleiner Teil der Elemente tatsächlich verarbeitet wird.
 
-Einfluss des Clusterwachstums
+Insgesamt zeigt sich ein Zielkonflikt zwischen Vollständigkeit und Reaktionszeit. Backpressure ermöglicht eine 
+verlustfreie Verarbeitung bei höheren Latenzen, während Drop-Strategien geringere Latenzen auf Kosten erheblicher 
+Nachrichtenverluste bieten. Für die Verarbeitung kritischer Telemetriedaten erscheint daher Backpressure als die 
+geeignetere Strategie.
 
-Vergleich:
 
-mit/ohne Parallelisierung
-
-verschiedene Pipelines
-
-verschiedene Rennen (Datenlast unterschiedlich)
 \section{Diskussion der Ergebnisse}
-Warum verhalten sich Streams/Cluster so?
 
-Welche Bottlenecks hast du identifiziert?
+Die durchgeführten Tests zeigen, dass die entwickelte Architektur die funktionalen und nicht-funktionalen Anforderungen 
+im Wesentlichen erfüllt. Die funktionalen Tests bestätigen, dass die Interaktion zwischen Ingress-Service, 
+Stream-Pipeline und Cluster-Sharding korrekt umgesetzt wurde und eingehende Telemetriedaten zuverlässig verarbeitet 
+und weitergeleitet werden.
 
-Was läuft stabil?
+Die Failover-Tests verdeutlichen die hohe Fehlertoleranz des Systems. Durch die Verwendung von Akka.NET Cluster 
+Sharding sowie persistenter Entities konnten Ausfälle einzelner Knoten erkannt und durch Rebalancing kompensiert 
+werden. Gleichzeitig stellt die Wiederherstellung des Zustands aus Journal und Snapshots sicher, dass keine bereits 
+verarbeiteten Daten verloren gehen. Dies bestätigt die Eignung der gewählten Architektur für verteilte, resiliente 
+Stream-Verarbeitungssysteme.
 
-Was müsste verbessert werden?
+Die Leistungsanalyse der Stream-Pipeline zeigt einen klaren Zielkonflikt zwischen Latenz und Vollständigkeit der 
+Datenverarbeitung. Während Drop-basierte Overflow-Strategien niedrige Latenzen ermöglichen, führen sie zu erheblichen 
+Nachrichtenverlusten. Die Backpressure-Strategie gewährleistet hingegen eine vollständige Verarbeitung aller Elemente, 
+allerdings mit erhöhten Latenzen unter Last. Für den vorliegenden Anwendungsfall der Telemetriedatenverarbeitung ist 
+diese Eigenschaft entscheidend, da Datenkonsistenz wichtiger ist als minimale Reaktionszeiten.
 
-Welche Architekturentscheidungen waren richtig/falsch?
+Es ist jedoch zu berücksichtigen, dass die Untersuchung der Overflow-Strategien in einem kontrollierten Testszenario 
+mit synthetischen Daten, begrenzter Datenmenge und konstanter Verarbeitungszeit durchgeführt wurde. Die Ergebnisse 
+liefern daher eine qualitative Einschätzung des Systemverhaltens unter Last, können jedoch nicht uneingeschränkt auf 
+beliebig große Produktionsszenarien übertragen werden. Insbesondere können sich bei realen Telemetriedatenströmen mit 
+variierender Last, Netzwerkverzögerungen und dynamischer Clustergröße abweichende Performancecharakteristiken ergeben.
 
-Wie gut erfüllt das System die Ziele der Arbeit?
+Insgesamt bestätigen die Ergebnisse, dass die Kombination aus Akka.NET Cluster Sharding, persistierenden Entities 
+und reaktiver Stream-Verarbeitung eine geeignete Grundlage für die skalierbare und fehlertolerante Verarbeitung 
+kontinuierlicher Datenströme darstellt. Gleichzeitig zeigen die Tests, dass insbesondere unter hoher Last eine 
+Abwägung zwischen Latenz und Datenvollständigkeit erforderlich ist, die je nach Anwendungsszenario unterschiedlich 
+gewichtet werden muss.
+

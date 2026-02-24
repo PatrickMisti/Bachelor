@@ -2,6 +2,81 @@
 
 \section{Zusammenfassung der Ergebnisse}
 
+Im Rahmen dieser Arbeit wurde ein verteiltes, aktorenbasiertes Stream-Verarbeitungssystem auf Basis von 
+Akka.NET konzipiert und implementiert. Ziel war es, eingehende Telemetriedaten effizient, skalierbar und 
+fehlertolerant zu verarbeiten sowie innerhalb eines Clusterverbunds zu speichern und weiterzuleiten.
+
+Hierzu wurde eine Architektur entwickelt, die aus Ingress-, Backend- und Koordinator-Komponenten besteht. 
+Der Eingangs-Service übernimmt den kontinuierlichen Empfang der Telemetriedaten über eine persistente 
+Socket-Verbindung und speist diese in eine Akka.Streams-Pipeline ein. Durch die Verwendung einer 
+\texttt{Source.Queue} mit Backpressure konnte ein kontrollierter Datenfluss zwischen externer Datenquelle 
+und interner Verarbeitung realisiert werden.
+
+Die Verarbeitung der Daten erfolgt innerhalb eines explizit definierten Stream-Graphs unter Verwendung der 
+GraphDSL-API. Zur parallelen Verarbeitung wurden mehrere Worker-Aktoren eingesetzt, die über eine 
+\texttt{Balance}-Stufe in den Stream integriert sind. Die Lastverteilung erfolgt dabei demand-basiert, wodurch 
+eine dynamische Anpassung an die aktuelle Verarbeitungskapazität der Worker erreicht wird.
+
+Zur Weiterleitung und Verarbeitung der Daten im Cluster wurde Akka.NET Cluster Sharding eingesetzt. Dadurch 
+konnten zustandsbehaftete Entitäten verteilt und automatisch auf mehrere Knoten skaliert werden. Ergänzend 
+wurde ein Acknowledgement-Mechanismus mittels \texttt{Sink.ActorRefWithAck} implementiert, um Backpressure 
+auch auf Ebene der Aktor-Kommunikation zu unterstützen.
+
+Die implementierte Architektur ermöglicht somit eine skalierbare, reaktive und fehlertolerante Verarbeitung 
+kontinuierlicher Telemetriedatenströme innerhalb eines verteilten Aktorensystems.
+
+Zur Überwachung der Kommunikation zwischen Ingress- und Backend-Komponenten wurde zusätzlich eine 
+Koordinationsinstanz implementiert. Diese stellt sicher, dass der Ingress-Service eingehende Daten erst dann 
+in das System einspeist, wenn mindestens eine empfangsbereite Backend-Komponente verfügbar ist. Hierzu werden 
+Cluster-Ereignisse überwacht, insbesondere das Beitreten und Verlassen von Knoten sowie die Verfügbarkeit 
+relevanter Aktoren. Auf diese Weise wird verhindert, dass Daten an nicht verfügbare Verarbeitungseinheiten 
+gesendet werden, wodurch die Stabilität und Konsistenz des Systems erhöht wird.
+
+
 \section{Bewertung der Zielerreichung}
 
+Das primäre Ziel der Arbeit bestand darin, ein skalierbares und fehlertolerantes System zur Verarbeitung 
+kontinuierlicher Telemetriedaten auf Basis von Akka.NET zu entwickeln. Dieses Ziel konnte weitgehend 
+erreicht werden, da eine funktionale Architektur implementiert wurde, die eine verteilte Verarbeitung 
+innerhalb eines Clusters ermöglicht.
+
+Die Verwendung von Akka.Streams erwies sich als geeigneter Ansatz zur kontrollierten Verarbeitung der 
+eingehenden Datenströme. Insbesondere der integrierte Backpressure-Mechanismus trug maßgeblich zur 
+Stabilität des Systems bei, da eine Überlastung nachgelagerter Verarbeitungsschritte effektiv verhindert 
+werden konnte. Durch den Einsatz mehrerer Worker-Aktoren in Kombination mit der \texttt{Balance}-Stufe 
+konnte zudem eine dynamische Lastverteilung realisiert werden.
+
+Auch die Integration von Cluster Sharding stellte einen wesentlichen Beitrag zur Zielerreichung dar, 
+da dadurch zustandsbehaftete Entitäten automatisch auf mehrere Knoten verteilt und bei Bedarf neu 
+ausbalanciert werden können. Dies erfüllt die Anforderungen an Skalierbarkeit und Fehlertoleranz 
+verteilter Systeme.
+
+Dennoch zeigten sich im Verlauf der Implementierung auch Einschränkungen. Die Komplexität der Konfiguration 
+und des Debuggings verteilter Aktorensysteme erwies sich als hoch, insbesondere im Zusammenspiel von Streams, 
+Clustering und Persistenz. Zudem hängt die tatsächliche Leistungsfähigkeit stark von der Anzahl der 
+Worker-Aktoren sowie der verfügbaren Systemressourcen ab.
+
+Insgesamt kann festgehalten werden, dass die gesetzten Ziele in Bezug auf Skalierbarkeit, Reaktivität und 
+verteilte Verarbeitung erfolgreich umgesetzt wurden, wenngleich die praktische Komplexität solcher Systeme 
+eine sorgfältige Konfiguration und Überwachung erfordert.
+
 \section{Ausblick}
+
+Zur weiteren Verbesserung des Systems bietet sich insbesondere der Einsatz von Cloud-Infrastrukturen an. 
+Durch den Betrieb der Anwendung in einer containerisierten Umgebung könnte die Skalierbarkeit und Verfügbarkeit 
+weiter erhöht werden. Container-Orchestrierungsplattformen wie Kubernetes ermöglichen dabei eine dynamische 
+Anpassung der verfügbaren Ressourcen an die aktuelle Last und unterstützen somit den elastischen Betrieb 
+verteilter Clusteranwendungen.
+
+Darüber hinaus stellt die Kombination von Echtzeit- und historischen Daten einen vielversprechenden 
+Erweiterungsansatz dar. Durch die parallele Verarbeitung beider Datenquellen könnten umfassendere Analysen 
+sowie detailliertere Visualisierungen der Telemetriedaten realisiert werden. Dies würde es ermöglichen, 
+aktuelle Rennsituationen in den Kontext vergangener Ereignisse zu setzen und weiterführende Auswertungen 
+durchzuführen.
+
+Ein weiterer zukünftiger Entwicklungsschritt betrifft die Integration von Logging- und Monitoring-Lösungen 
+zur kontinuierlichen Überwachung der Systemleistung und -stabilität. Der Einsatz von Werkzeugen wie Prometheus 
+zur Erfassung von Metriken sowie Grafana zur visuellen Aufbereitung dieser Daten könnte eine detaillierte 
+Analyse des Systemverhaltens ermöglichen und die Wartbarkeit sowie den produktiven Betrieb des Systems 
+nachhaltig verbessern.
+
