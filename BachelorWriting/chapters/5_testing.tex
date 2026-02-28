@@ -16,11 +16,11 @@ Akka.NET Streams – wurden die Testfälle entsprechend auf diese Bereiche abges
 Die durchgeführten Tests lassen sich in drei Kategorien einteilen:
 
 \begin{itemize}
-    \item \textbf{Funktionale Tests}: Überprüfung der korrekten Verarbeitung, Persistierung und Weiterleitung der Daten.
-    \item \textbf{Failover- und Resilienztests}: Analyse des Systemverhaltens bei Node-Ausfällen, unerreichbaren 
+      \item \textbf{Funktionale Tests}: Überprüfung der korrekten Verarbeitung, Persistierung und Weiterleitung der Daten.
+      \item \textbf{Failover- und Resilienztests}: Analyse des Systemverhaltens bei Node-Ausfällen, unerreichbaren 
           Clusterknoten sowie Neustarts der persistierten Entitäten.
-    \item \textbf{Performance- und Durchsatztests}: Bewertung der Effizienz der Stream-Pipelines sowie des 
-          Systemverhaltens unter Last.
+      \item \textbf{Performance- und Durchsatztests}: Bewertung der Effizienz der implementierten Streamverarbeitungspipelines 
+      sowie des Systemverhaltens unter Last.
 \end{itemize}
 
 Für die Tests auf Actor-Ebene wurde das Akka.NET \texttt{TestKit} eingesetzt. Dieses ermöglicht das Testen von 
@@ -39,8 +39,8 @@ liefert. Nach erfolgreicher Initialisierung werden Telemetrie- und Zustandsupdat
 konsistent aktualisiert.
 
 Zusätzlich wurde validiert, dass verarbeitete Driver-Daten korrekt an nachgelagerte Komponenten weitergeleitet werden, 
-insbesondere an die API- bzw. Monitoring-Schnittstelle. Für Fehlerszenarien wurde geprüft, dass ungültige oder nicht zum Entity 
-passende IDs zuverlässig erkannt werden und keine inkonsistenten Zustände entstehen.
+insbesondere an die API sowie an die Monitoring-Komponente. Für Fehlerszenarien wurde geprüft, dass ungültige 
+oder nicht zur jeweiligen Entität passende IDs zuverlässig erkannt werden und keine inkonsistenten Zustände entstehen.
 
 \section{Verhalten bei Node-Ausfällen und Neuausrichtung}
 
@@ -64,12 +64,21 @@ im Clusterbetrieb gewährleistet.
 
 \section{Leistungsanalyse und Bewertung der Stream-Strategien}
 
+In diesem Abschnitt wird die Leistungsfähigkeit der implementierten Verarbeitungspipeline sowie der Einfluss 
+unterschiedlicher Overflow-Strategien systematisch untersucht. Ziel ist es, das Verhalten der Pipeline unter 
+Last zu analysieren und die Auswirkungen auf Durchsatz, Latenz und Nachrichtenverluste zu bewerten. 
+Die Ergebnisse dienen dazu, die Eignung der gewählten Strategien für die Verarbeitung zeitkritischer 
+Telemetriedaten zu beurteilen.
+
 \subsection{Versuchsaufbau und Messgrößen}
 
 Zur Untersuchung der Leistungsfähigkeit der implementierten Stream-Pipeline wurden experimentelle Messungen unter kontrollierten 
 Bedingungen durchgeführt. Hierzu wurde ein synthetischer Datenstrom mit einer festen Anzahl von 4000 Elementen erzeugt und durch 
-eine Akka.Streams-Pipeline geleitet. Die Pipeline enthielt einen konfigurierbaren Puffer mit einer Größe von 50 Elementen sowie 
-eine simulierte Verarbeitungsverzögerung von 2\,ms pro Element, um das Verhalten realer Telemetriedatenverarbeitung nachzubilden.
+eine Akka.Streams-Pipeline geleitet. Die Einspeisung des Datenstroms erfolgte ohne explizite Ratenbegrenzung, sodass die Elemente 
+unmittelbar erzeugt und in die Pipeline eingespeist wurden (Burst-Einspeisung). Die effektive Eingangsrate ergab sich somit aus 
+der Verarbeitungskapazität der Pipeline, dem Backpressure-Mechanismus sowie der konfigurierten Puffergröße. 
+Die Pipeline enthielt einen konfigurierbaren Puffer mit einer Größe von 50 Elementen sowie eine simulierte 
+Verarbeitungsverzögerung von 2\,ms pro Element, um das Verhalten realer Telemetriedatenverarbeitung nachzubilden.
 
 Als zentrale Messgrößen wurden der Durchsatz in Nachrichten pro Sekunde sowie die Latenzverteilung erfasst. Die Latenz wurde als 
 Zeitdifferenz zwischen Erzeugung und Verarbeitung eines Elements bestimmt. Zur detaillierten Analyse wurden die Perzentile p50, 

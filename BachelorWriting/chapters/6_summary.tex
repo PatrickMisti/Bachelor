@@ -1,10 +1,17 @@
 \chapter{Zusammenfassung und Ausblick}
 
+Dieses Kapitel fasst die zentralen Ergebnisse der Arbeit zusammen, bewertet die Zielerreichung der 
+entwickelten Architektur und gibt einen Ausblick auf mögliche Weiterentwicklungen des Systems. 
+Dabei werden sowohl die erreichten Eigenschaften hinsichtlich Skalierbarkeit, Fehlertoleranz und 
+reaktiver Datenverarbeitung als auch bestehende Einschränkungen und zukünftige Erweiterungspotenziale 
+diskutiert.
+
 \section{Zusammenfassung der Ergebnisse}
 
-Im Rahmen dieser Arbeit wurde ein verteiltes, aktorenbasiertes Stream-Verarbeitungssystem auf Basis von 
-Akka.NET konzipiert und implementiert. Ziel war es, eingehende Telemetriedaten effizient, skalierbar und 
-fehlertolerant zu verarbeiten sowie innerhalb eines Clusterverbunds zu speichern und weiterzuleiten.
+Im Rahmen dieser Arbeit wurde ein verteiltes, aktorenbasiertes System zur Verarbeitung kontinuierlicher 
+Datenströme auf Basis von Akka.NET konzipiert und implementiert. Ziel war es, eingehende Telemetriedaten 
+effizient, skalierbar und fehlertolerant zu verarbeiten sowie innerhalb eines Clusterverbunds zu speichern 
+und weiterzuleiten.
 
 Hierzu wurde eine Architektur entwickelt, die aus Ingress-, Backend- und Koordinator-Komponenten besteht. 
 Der Eingangs-Service übernimmt den kontinuierlichen Empfang der Telemetriedaten über eine persistente 
@@ -14,16 +21,22 @@ und interner Verarbeitung realisiert werden.
 
 Die Verarbeitung der Daten erfolgt innerhalb eines explizit definierten Stream-Graphs unter Verwendung der 
 GraphDSL-API. Zur parallelen Verarbeitung wurden mehrere Worker-Aktoren eingesetzt, die über eine 
-\texttt{Balance}-Stufe in den Stream integriert sind. Die Lastverteilung erfolgt dabei demand-basiert, wodurch 
-eine dynamische Anpassung an die aktuelle Verarbeitungskapazität der Worker erreicht wird.
+\texttt{Balance}-Stufe in den Stream integriert sind. Die Lastverteilung erfolgt dabei abhängig von der 
+jeweils signalisierten Verarbeitungskapazität der Worker, wodurch eine dynamische Anpassung an die aktuelle 
+Auslastung erreicht wird.
 
-Zur Weiterleitung und Verarbeitung der Daten im Cluster wurde Akka.NET Cluster Sharding eingesetzt. Dadurch 
-konnten zustandsbehaftete Entitäten verteilt und automatisch auf mehrere Knoten skaliert werden. Ergänzend 
-wurde ein Acknowledgement-Mechanismus mittels \texttt{Sink.ActorRefWithAck} implementiert, um Backpressure 
-auch auf Ebene der Aktor-Kommunikation zu unterstützen.
+Das Backend bildet die zentrale Verarbeitungsschicht des Systems. Hier wird mittels Akka.NET Cluster Sharding 
+eine \texttt{ShardRegion} betrieben, in der zustandsbehaftete Entitäten als persistente Aktoren 
+(\texttt{DriverActorPersistent}) verwaltet werden. Jede Entität repräsentiert den Zustand eines einzelnen 
+Fahrers und verarbeitet eingehende Telemetriedaten sequenziell. Zustandsänderungen werden als Ereignisse 
+persistiert und in regelmäßigen Abständen durch Snapshots ergänzt, wodurch eine konsistente Wiederherstellung 
+nach Ausfällen oder Rebalancing des Clusters gewährleistet wird. Durch die Verteilung der Shards auf mehrere Backend-Knoten 
+kann die Verarbeitung automatisch skaliert und bei Knotenausfällen transparent fortgeführt werden.
 
-Die implementierte Architektur ermöglicht somit eine skalierbare, reaktive und fehlertolerante Verarbeitung 
-kontinuierlicher Telemetriedatenströme innerhalb eines verteilten Aktorensystems.
+Ergänzend wurde ein Acknowledgement-Mechanismus mittels \texttt{Sink.ActorRefWithAck} implementiert, um 
+Backpressure auch auf Ebene der Aktor-Kommunikation zu unterstützen. Die implementierte Architektur 
+ermöglicht somit eine skalierbare, reaktive und fehlertolerante Verarbeitung kontinuierlicher 
+Telemetriedatenströme innerhalb eines verteilten Aktorensystems.
 
 Zur Überwachung der Kommunikation zwischen Ingress- und Backend-Komponenten wurde zusätzlich eine 
 Koordinationsinstanz implementiert. Diese stellt sicher, dass der Ingress-Service eingehende Daten erst dann 
@@ -75,8 +88,7 @@ aktuelle Rennsituationen in den Kontext vergangener Ereignisse zu setzen und wei
 durchzuführen.
 
 Ein weiterer zukünftiger Entwicklungsschritt betrifft die Integration von Logging- und Monitoring-Lösungen 
-zur kontinuierlichen Überwachung der Systemleistung und -stabilität. Der Einsatz von Werkzeugen wie Prometheus 
-zur Erfassung von Metriken sowie Grafana zur visuellen Aufbereitung dieser Daten könnte eine detaillierte 
-Analyse des Systemverhaltens ermöglichen und die Wartbarkeit sowie den produktiven Betrieb des Systems 
-nachhaltig verbessern.
-
+zur kontinuierlichen Überwachung der Leistungsfähigkeit und Stabilität des Systems. Der Einsatz von Werkzeugen 
+wie Prometheus zur Erfassung von Metriken sowie Grafana zur visuellen Aufbereitung dieser Daten könnte eine 
+detaillierte Analyse des Systemverhaltens ermöglichen und die Wartbarkeit sowie den produktiven Betrieb des 
+Systems nachhaltig verbessern.

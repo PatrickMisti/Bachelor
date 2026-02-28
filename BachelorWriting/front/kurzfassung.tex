@@ -1,33 +1,30 @@
 \chapter{Kurzfassung}
 
 \begin{german}
-Im Rahmen dieser Arbeit wurde Akka.NET anhand eines konkreten Anwendungsfalls zur Verarbeitung von
-Formel-1-Telemetriedaten konzipiert, implementiert und evaluiert. Ziel des Use-Cases war es,
-kontinuierlich eintreffende Renndaten abzufangen, zu verarbeiten und in eine geeignete
-Datenstruktur zu transformieren, sodass diese resilient und fehlertolerant bereitgestellt werden können.
+Im Rahmen dieser Arbeit wurde ein Akka.NET-basiertes verteiltes System zur Verarbeitung von Formel-1-Telemetriedaten 
+konzipiert, implementiert und evaluiert. Ziel des Use-Cases war es, kontinuierlich eintreffende Renndaten abzufangen, 
+zu verarbeiten und in eine geeignete Datenstruktur zu transformieren, sodass diese resilient und fehlertolerant 
+bereitgestellt werden können.
 
-Ein zentraler Fokus lag dabei auf der Entwicklung einer Architektur, die eine robuste Verarbeitung
-auch bei auftretenden Fehlern oder Knotenausfällen gewährleistet. Durch den Einsatz des Aktorenmodells,
-asynchroner Nachrichtenkommunikation sowie Cluster-Sharding konnte ein System entworfen werden,
-das eingehende Datenströme zuverlässig verarbeitet und Zustandsänderungen konsistent verwaltet.
-Die implementierte Struktur erwies sich insbesondere im Hinblick auf Fehlertoleranz und
-Wiederherstellbarkeit nach Systemausfällen als geeignet.
+Ein zentraler Fokus lag dabei auf der Entwicklung einer Architektur, die eine robuste Verarbeitung auch bei auftretenden 
+Fehlern oder Knotenausfällen gewährleistet. Durch den Einsatz des Aktorenmodells, asynchroner Nachrichtenkommunikation 
+sowie Cluster-Sharding konnte ein System entworfen werden, das eingehende Datenströme zuverlässig verarbeitet und 
+Zustandsänderungen konsistent verwaltet. Die implementierte Struktur erwies sich insbesondere im Hinblick auf 
+Fehlertoleranz und Wiederherstellbarkeit nach Systemausfällen als geeignet.
 
-Während der Umsetzung zeigte sich, dass die Konfiguration und Einrichtung eines verteilten
-Akka.NET-Clusters mit erheblichem Aufwand verbunden ist. Insbesondere die korrekte Abstimmung
-der Cluster-, Sharding- und Persistenzkomponenten erforderte eine intensive Einarbeitung,
-was teilweise auf die vergleichsweise geringe Verbreitung von Akka.NET im Vergleich zu
-anderen Streaming- oder Microservice-Technologien zurückzuführen ist.
+Während der Umsetzung zeigte sich, dass die Konfiguration und Einrichtung eines verteilten Akka.NET-Clusters mit 
+erheblichem Aufwand verbunden ist. Insbesondere die korrekte Abstimmung der Cluster-, Sharding- und Persistenzkomponenten 
+erforderte eine intensive Einarbeitung, was teilweise auf die vergleichsweise geringere Verbreitung von Akka.NET im 
+Vergleich zu anderen Streaming- oder Microservice-Technologien zurückzuführen ist.
 
-Die Evaluation verdeutlicht jedoch, dass sich Akka.NET besonders für Szenarien eignet,
-in denen häufige Zustandsänderungen in Echtzeit verarbeitet werden müssen.
-Die Kombination aus asynchroner Aktorenkommunikation, integrierter Fehlertoleranz
-und automatischer Wiederherstellung von Zuständen ermöglicht eine stabile und resiliente
-Datenverarbeitung auch unter hoher Last oder bei partiellen Systemausfällen.
+Die Evaluation verdeutlicht jedoch, dass sich Akka.NET besonders für Szenarien eignet, in denen häufige Zustandsänderungen 
+in Echtzeit verarbeitet werden müssen. Die Kombination aus asynchroner Aktorenkommunikation, integrierter Fehlertoleranz 
+und automatischer Wiederherstellung von Zuständen ermöglicht eine stabile und resiliente Datenverarbeitung auch unter 
+hoher Last oder bei partiellen Systemausfällen.
 
-Ein weiterer Vorteil besteht in der Unterstützung verteilter Ausführung über Remote-Kommunikation,
-wodurch Ressourcen mehrerer Rechner effizient genutzt werden können. Dies eröffnet zusätzliche
-Möglichkeiten zur horizontalen Skalierung und zur besseren Auslastung verfügbarer Systemressourcen.
+Ein weiterer Vorteil besteht in der Unterstützung verteilter Ausführung über Remote-Kommunikation, wodurch Ressourcen 
+mehrerer Rechner effizient genutzt werden können. Dies eröffnet zusätzliche Möglichkeiten zur horizontalen Skalierung 
+und zur besseren Auslastung verfügbarer Systemressourcen.
 % ...
 \end{german}
 

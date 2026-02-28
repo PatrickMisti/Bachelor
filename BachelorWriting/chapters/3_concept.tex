@@ -245,7 +245,7 @@ Falls der Singleton vorübergehend nicht erreichbar ist, werden eingehende Nachr
 Wiederherstellung der Verbindung automatisch weitergeleitet. Wird die maximale Puffergöße überschritten, verwirft 
 der Proxy die ältesten Nachrichten, um eine Überlastung zu verhindern \parencite{getakka_singleton}.
 
-\section{Kommunikation über Verteiltes Pub/Sub}
+\section{Kommunikation über verteiltes Publish/Subscribe}
 
 Der Einsatz verteilter Kommunikation in Akka.NET wird relevant, sobald Nachrichten nicht mehr nur zwischen Aktoren 
 auf demselben Knoten ausgetauscht werden, sondern zwischen Aktoren eines verteilten Aktorensystems, das über mehrere 
@@ -339,7 +339,7 @@ Datenlast wäre dieses Modell daher ungeeignet.
 Eine Microservices-Architektur, bei der jede Funktionalität als eigenständiger Dienst implementiert wird, wurde ebenfalls 
 in Betracht gezogen. Obwohl ein solcher Ansatz eine hohe Modularität und unabhängige Skalierbarkeit einzelner Komponenten 
 ermöglicht, wäre der Infrastruktur- und Betriebsaufwand deutlich höher. Aspekte wie Service-Orchestrierung, Deployment, 
-Monitoring und die Absicherung der Inter-Service-Kommunikation würden die Komplexität des Gesamtsystems stark erhöhen, 
+Monitoring und die Absicherung der Kommunikation zwischen Services würden die Komplexität des Gesamtsystems stark erhöhen, 
 ohne einen entscheidenden Vorteil für die Verarbeitung der zeitkritischen Formel-1-Daten zu bieten.
 
 \subsection*{Zentralisierte Datenbank}

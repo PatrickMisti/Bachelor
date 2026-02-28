@@ -1,6 +1,20 @@
 \chapter{Grundlagen}
 
+Dieses Kapitel stellt die theoretischen und technologischen Grundlagen vor, die für das Verständnis der 
+in dieser Arbeit entwickelten Systemarchitektur erforderlich sind. Zunächst werden reaktive Systeme und 
+das Aktorenmodell als konzeptionelle Basis verteilter, nebenläufiger Anwendungen eingeführt. Anschließend 
+wird das Framework Akka.NET vorgestellt, dessen zentrale Mechanismen für Skalierbarkeit, Fehlertoleranz 
+und zustandsbehaftete Echtzeitverarbeitung erläutert werden. Die dargestellten Konzepte bilden die 
+Grundlage für die spätere Konzeption und Implementierung des verteilten Systems zur Verarbeitung von 
+Telemetriedaten.
+
 \section{Einführung in Reactive Systems und Aktorenmodell}
+
+Dieser Abschnitt führt in die grundlegenden Konzepte reaktiver Systeme sowie in das Aktorenmodell ein, 
+die die konzeptionelle Basis für moderne verteilte Softwaresysteme bilden. Zunächst wird die Motivation 
+für reaktive Architekturen im Kontext wachsender Systemkomplexität und Verteilung erläutert. Anschließend 
+werden die zentralen Eigenschaften reaktiver Systeme dargestellt, bevor das Aktorenmodell als geeignetes 
+Paradigma zur Realisierung nebenläufiger, skalierbarer und fehlertoleranter Anwendungen vorgestellt wird.
 
 \subsection{Motivation reaktiver Systeme}
 
@@ -31,10 +45,9 @@ konsequent nachrichtenbasierte Kommunikation. Diese Merkmale bilden die Grundlag
 lastadaptiver Softwaresysteme. Erst die Kombination dieser 
 Eigenschaften definiert ein sogenanntes reaktives System \parencite{reactive_manifesto, kuhn_reactive_patterns}.
 
-
 \subsection{Eigenschaften reaktiver Systeme}
 
-Nach dem Reactive Manifesto zeichnen sich reaktive Systeme durch vier zentrale Eigenschaften aus \parencite{reactive_manifesto}:
+Nach dem \emph{Reactive Manifesto} zeichnen sich reaktive Systeme durch vier zentrale Eigenschaften aus \parencite{reactive_manifesto}:
 
 \begin{figure}[H]
     \centering
@@ -78,6 +91,13 @@ typische Probleme nebenläufiger Programmierung, wie Race Conditions oder Deadlo
 \parencite[pp.~12--14]{kuhn_aktormodell,hewitt1973actors}.
 
 \section{Akka.NET als Framework für verteilte reaktive Systeme}
+
+Aufbauend auf den zuvor erläuterten Konzepten reaktiver Systeme und des Aktorenmodells wird in diesem Abschnitt das 
+Framework Akka.NET vorgestellt. Akka.NET bietet eine konkrete Implementierung des Aktorenmodells zur Entwicklung 
+verteilter, fehlertoleranter und skalierbarer Anwendungen. Im Folgenden werden die zentralen Mechanismen erläutert, 
+die für die Umsetzung reaktiver Systeme mit Akka.NET relevant sind. Dazu zählen insbesondere das asynchrone Nachrichtenmodell, 
+Cluster-Funktionalitäten, Cluster Sharding, persistente Aktoren, Cluster-Singletons sowie Mechanismen zur verteilten 
+Kommunikation und Datenstromverarbeitung.
 
 \subsection{Aktoren und asynchrones Nachrichtenmodell}
 
@@ -167,12 +187,12 @@ verteilte Zustandsrekonstruktion und Event-basierte Kommunikation dienen \parenc
 
 \subsection{Cluster Singleton}
 
-Ein Cluster-Singleton stellt sicher, dass innerhalb eines verteilten Clusters genau eine Instanz eines 
+Ein Cluster Singleton stellt sicher, dass innerhalb eines verteilten Clusters genau eine Instanz eines 
 bestimmten Aktors aktiv ist. Dieses Konzept wird eingesetzt, wenn clusterweite Koordination oder konsistente 
 Entscheidungen zentral getroffen werden müssen, beispielsweise als zentraler Einstiegspunkt für externe 
 Systeme oder zur Koordination verteilter Arbeitsknoten \parencite{getakka_singleton}. 
 
-Ein Cluster-Singleton wird typischerweise auf einem geeigneten Knoten im Cluster ausgeführt und bei Ausfall 
+Ein Cluster Singleton wird typischerweise auf einem geeigneten Knoten im Cluster ausgeführt und bei Ausfall 
 automatisch auf einen anderen Knoten verlagert, sodass die Verfügbarkeit erhalten bleibt. Damit wird verhindert, 
 dass mehrere konkurrierende Instanzen gleichzeitig existieren, was insbesondere für konsistente 
 Zustandsverwaltung oder globale Koordinationsaufgaben erforderlich ist 
@@ -183,7 +203,7 @@ Instanz gerichtet werden, kann dieser Aktor zu einem Engpass werden und potenzie
 Obwohl ein neuer Singleton nach einem Ausfall automatisch gestartet wird, kann es während der Migration zu 
 kurzzeitigen Unterbrechungen kommen \parencite[Kap.~13.4]{roestenburg2016akkaina}. 
 
-Cluster-Singletons eignen sich daher insbesondere für Aufgaben mit zentraler Verantwortung, Koordinatoren 
+Cluster Singletons eignen sich daher insbesondere für Aufgaben mit zentraler Verantwortung, Koordinatoren 
 oder zentrale Routinglogik, während für hochgradig skalierende und stark parallelisierte Verarbeitung eher 
 verteilte Aktoren ohne zentrale Instanz bevorzugt werden sollten \parencite{getakka_singleton}.
 
@@ -205,7 +225,7 @@ ausgewertet werden müssen \parencite[Kap.~10]{roestenburg2016akkaina}.
 Ein zentrales Problem bei der Verarbeitung solcher Datenströme entsteht, wenn Produzenten Daten schneller 
 erzeugen, als Konsumenten diese verarbeiten können. Ohne geeignete Flusskontrolle würden sich Nachrichten 
 in Puffern ansammeln und letztlich zu Ressourcenerschöpfung oder Systemausfällen führen \parencite[Kap.~10]{roestenburg2016akkaina}. 
-Zur Lösung dieses Problems wurde die Reactive-Streams-Initiative entwickelt, auf der Akka.Streams basiert. 
+Zur Lösung dieses Problems wurde die Initiative Reactive Streams ins Leben gerufen, auf deren Spezifikation Akka.Streams basiert. 
 Sie definiert ein asynchrones, nicht-blockierendes Kommunikationsmodell mit integriertem Backpressure, 
 bei dem Konsumenten die Datenrate steuern, indem sie aktiv Nachfrage signalisieren \parencite{reactive_streams_spec}. 
 

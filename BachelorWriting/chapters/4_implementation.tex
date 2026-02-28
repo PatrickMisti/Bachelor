@@ -1,10 +1,19 @@
 \chapter{Implementierung}
 
+Dieses Kapitel beschreibt die praktische Umsetzung der in den vorherigen Kapiteln konzipierten Architektur. 
+Zunächst wird die Projektstruktur vorgestellt und die Aufteilung in Module sowie Rollen innerhalb des Systems 
+erläutert. Anschließend wird die Konfiguration und Initialisierung des Akka.NET-Clusters beschrieben, 
+einschließlich der verwendeten HOCON- und Akka.Hosting-Ansätze. Darauf aufbauend werden die Implementierung 
+des Eingangs-Services, die Datenverarbeitung mit Akka.Streams sowie die zustandsbehaftete Verarbeitung 
+innerhalb der ShardRegion dargestellt. Abschließend werden die Mechanismen zur Nachrichtenverteilung, zur 
+Cluster-Steuerung und Fehlertoleranz sowie die Client- und Visualisierungsschicht erläutert, bevor das 
+Zusammenspiel aller Komponenten zusammengeführt wird.
+
 \section{Projektstruktur}
 
 Die Projektstruktur ist so gewählt, dass der zentrale Anwendungsteil den vollständigen Code für das Kernmodul enthält. 
 Innerhalb dieses Moduls werden die verschiedenen Rollen des Systems klar voneinander getrennt umgesetzt. 
-Komponenten, die nicht direkt zum Kerngeschäft gehören, wie Infrastrukturkomponenten oder Tests, 
+Komponenten, die nicht direkt zum Kernfunktionalität gehören, wie Infrastrukturkomponenten oder Tests, 
 sind in eigenständige Projekte ausgelagert. Dadurch wird die Wartbarkeit verbessert und eine klare Trennung 
 der Verantwortlichkeiten erreicht. Die Gesamtstruktur des Projekts ist in Abbildung~\ref{fig:project-structure} dargestellt.
 
@@ -112,6 +121,12 @@ vereinfacht wird. Serilog und Npgsql ergänzen die Architektur durch Logging und
 
 \section{Konfiguration und Initialisierung des Clusters}
 
+In diesem Abschnitt wird die Konfiguration und Initialisierung des Akka.NET-Clusters beschrieben. 
+Dabei werden zunächst die verwendeten Konfigurationsansätze vorgestellt, insbesondere die klassische 
+HOCON-basierte Konfiguration sowie die programmgesteuerte Einrichtung über Akka.Hosting. 
+Darauf aufbauend werden die Initialisierung der verschiedenen Rollen im Cluster sowie die Konfiguration 
+von Remoting-, Clustering- und Persistenzkomponenten erläutert.
+
 \subsection{HOCON-Konfiguration}
 
 Die Konfiguration eines Akka.NET-Systems kann auf zwei unterschiedliche Arten erfolgen. 
@@ -142,7 +157,8 @@ akka {
     actor {
       provider = cluster
       serializers {
-        hyperion = "Akka.Serialization.HyperionSerializer, Akka.Serialization.Hyperion"
+        hyperion = "Akka.Serialization.HyperionSerializer, 
+                    Akka.Serialization.Hyperion"
       }
       serialization-bindings {
         "System.Object" = hyperion
@@ -152,7 +168,7 @@ akka {
     remote.dot-netty.tcp { 
         hostname = "localhost"
         port = 0 
-        maximum-frame-size = 2MiB
+        maximum-frame-size  = 2MiB
         send-buffer-size    = 2MiB
         receive-buffer-size = 2MiB
     
@@ -192,7 +208,7 @@ Die Rollendefinition \texttt{api} legt fest, welche Aufgaben und Aktoren diesem 
 
 Anstatt die Konfiguration ausschließlich über externe HOCON-Dateien zu definieren, die beim manuellen Bearbeiten 
 anfällig für Fehler sein können, bietet Akka.Hosting die Möglichkeit, die Akka.NET-Konfiguration direkt im 
-Anwendungscode aufzubauen. Dadurch lässt sich die Konfiguration eng in die Dependency Injection Pipeline des 
+Anwendungscode aufzubauen. Dadurch lässt sich die Konfiguration eng in die Dependency-Injection-Pipeline des 
 .NET-Hostingmodells integrieren und gemeinsam mit anderen Diensten der Anwendung verwalten.
 
 In diesem Projekt kann die Anwendung wahlweise als monolithischer Prozess oder als verteiltes System mit mehreren 
@@ -257,10 +273,10 @@ Verarbeitung von Ingress- und Shard-bezogenen Ereignissen zuständig sind. Auf d
 und Verwaltung relevanter Clusterzustände dezentral über spezialisierte Listener-Aktoren umgesetzt.
 
 Die Methode \texttt{resolver.Props<T>()} ist eine Erweiterung von Akka.Hosting und ermöglicht die Erstellung 
-von Aktoren unter Nutzung der Dependency Injection. Mit \texttt{system.ActorOf(...)} wird der jeweilige Aktor 
+von Aktoren mit Hilfe von Dependency Injection. Mit \texttt{system.\allowbreak ActorOf(...)} wird der jeweilige Aktor 
 schließlich instanziert und dem Aktorensystem hinzugefügt.
 
-Über \texttt{registry.Register<T>()} wird der erzeugte Aktor anschließend im internen Registry-System von 
+Über \texttt{registry.Register<T>()} wird der erzeugte Aktor anschließend im internen Registry\allowbreak-System von 
 Akka.Hosting hinterlegt, damit er später von anderen Diensten oder Modulen abgerufen werden kann.
 
 \begin{program}[H]
@@ -313,8 +329,8 @@ Der eigentliche fachliche Zustand der Fahrerdaten wird hingegen durch die persis
 Zu Beginn werden die Optionen für das verteilte Sharding konfiguriert. Parameter wie
 \texttt{MajorityMinimumCapacity} legen fest, wie viele Clusterknoten für eine Mehrheitsentscheidung
 innerhalb von DistributedData erforderlich sind, während \texttt{MaxDeltaElements} bestimmt, wie
-umfangreich die über Gossip propagierten Delta-States sein dürfen. Diese Einstellungen beeinflussen das
-Verhalten der Replikation insbesondere bei wachsender Anzahl von Entitäten.
+umfangreich die über Gossip propagierten inkrementellen Zustandsänderungen (Delta-States) sein dürfen.
+Diese Einstellungen beeinflussen das Verhalten der Replikation insbesondere bei wachsender Anzahl von Entitäten.
 
 Im Anschluss wird die eigentliche ShardRegion registriert. Ein zugehöriger \textit{Marker}
 (\texttt{DriverRegionMarker}) ermöglicht den späteren Zugriff über die Dependency-Injection-Pipeline.
@@ -325,9 +341,8 @@ Entitäten zu und übernimmt damit eine zentrale Rolle in der Lastverteilung.
 
 Zusätzlich werden Optionen wie die automatische Passivierung inaktiver Entitäten sowie die Nutzung des
 DistributedData-Modus als Speichermechanismus für Sharding-Metadaten konfiguriert. Mit
-\texttt{RememberEntities = true} wird sichergestellt, dass Entitäten nach einem Neustart oder einem
-Rebalancing sodass zuvor bekannte Entitäten nach einem Neustart oder Rebalancing automatisch
-reaktiviert werden können.
+\texttt{RememberEntities = true} wird sichergestellt, dass zuvor bekannte Entitäten nach einem Neustart
+oder Rebalancing automatisch reaktiviert werden.
 
 \begin{program}[H]
 \caption{Auszug aus der Akka.Hosting-Backend-Konfiguration}
@@ -348,7 +363,8 @@ private static void RegisterShardRegion(this AkkaConfigurationBuilder config, Ak
         })
         .WithShardRegion<DriverRegionMarker>(
             typeName: akkaHc.ShardName,
-            entityPropsFactory: (_, _, resolver) => _ => resolver.Props<DriverActorPersistent>(),
+            entityPropsFactory: (_, _, resolver) => 
+                                 _ => resolver.Props<DriverActorPersistent>(),
             messageExtractor: extractor,
             shardOptions: new ShardOptions
             {
@@ -444,7 +460,9 @@ public static AkkaConfigurationBuilder UseRemoteCluster(this AkkaConfigurationBu
         .WithClustering(
             new ClusterOptions
             {
-                SeedNodes = config.Roles.Count == 1 ? config.SeedNodes : [config.SeedNodes.First()],
+                SeedNodes = config.Roles.Count == 1 
+                            ? config.SeedNodes 
+                            : [config.SeedNodes.First()],
                 Roles = config.Roles.ToArray()
             })
         .WithDistributedPubSub(role: null!)
@@ -501,11 +519,16 @@ private static void RegisterBackendJournal(this AkkaConfigurationBuilder config,
         .UseDataProvider(
             DataConnection.GetDataProvider(
                 ProviderName.PostgreSQL,
-                dataSource.ConnectionString) ?? throw new Exception("Could not get data provider"))
+                dataSource.ConnectionString) 
+                ?? throw new Exception("Could not get data provider")
+            )
         .UseProvider(ProviderName.PostgreSQL)
         .UseConnectionFactory(_ => dataSource.CreateConnection());
 
-    config.WithSqlPersistence(dataOptions, autoInitialize: true, schemaName: "public");
+    config.WithSqlPersistence(
+                    dataOptions, 
+                    autoInitialize: true, 
+                    schemaName: "public");
 
     config.AddStartup((sys, ct) =>
     {
@@ -557,8 +580,8 @@ strikt im Round-Robin-Verfahren, sondern abhängig von der jeweils anliegenden N
 Backpressure-Zustand der einzelnen Worker.
 
 Zur Einspeisung externer Daten in die Verarbeitungspipeline wird eine \texttt{Source.Queue} als Einstiegspunkt des 
-Streams verwendet. Diese Queue stellt einen asynchronen Übergabepunkt zwischen der Socket-basierten Datenquelle und 
-der internen Stream-Verarbeitung dar. Die gewählte Puffergröße begrenzt die Anzahl zwischengespeicherter Elemente, 
+Streams verwendet. Diese Queue bildet einen asynchronen Übergabepunkt zwischen der Socket-basierten Datenquelle und 
+der internen Verarbeitung im Stream. Die gewählte Puffergröße begrenzt die Anzahl zwischengespeicherter Elemente, 
 während die Overflow-Strategie \texttt{Backpressure} sicherstellt, dass der Produzent automatisch verlangsamt wird, 
 sobald der Puffer ausgelastet ist und nachgelagerte Verarbeitungsschritte die Daten nicht schnell genug verarbeiten 
 können.
@@ -652,14 +675,16 @@ private void RecoverState()
         if (offer.Snapshot is DriverInfoState state)
         {
             _state.RestoreFromSnapshot(state);
-            _logger.Info(\$"Recovered snapshot for driver {_state.ToDriverInfoString()}");
+            _logger
+             .Info(\$"Recovered snapshot for driver {_state.ToDriverInfoString()}");
         }
     });
 
     Recover<IHasDriverId>(evt =>
     {
         _state.Apply(evt);
-        _logger.Info("Replayed {Event} for {Pid}", evt.GetType().Name, PersistenceId);
+        _logger
+         .Info("Replayed {Event} for {Pid}", evt.GetType().Name, PersistenceId);
     });
 
     Recover<RecoveryCompleted>(_ =>
@@ -673,17 +698,19 @@ private void RecoverState()
 
 \subsection{Initialisierung des Aktors}
 
-Solange der Aktor noch nicht initialisiert wurde, befindet er sich im Verhalten \texttt{Uninitialized}. Dieser Zustand wird 
-im Konstruktor über \texttt{Become(Uninitialized)} aktiviert. Die Methode \texttt{Become} ersetzt sämtliche bisher 
-registrierten Nachrichtenhandler und ermöglicht damit ein dynamisches, zustandsabhängiges Verhalten des Aktors.
+Solange der Aktor noch nicht initialisiert wurde, befindet er sich im Verhalten \emph{Uninitialized}. 
+Dieser Zustand wird im Konstruktor über \texttt{Become(Uninitialized)} aktiviert. Die Methode 
+\texttt{Become} ersetzt sämtliche bisher registrierten Nachrichtenhandler und ermöglicht damit ein 
+dynamisches, zustandsabhängiges Verhalten des Aktors.
 
 Erst wenn der Aktor eine \texttt{CreateModelDriverMessage} empfängt, wird diese persistiert, auf den internen Zustand 
 angewendet und damit die Initialisierung abgeschlossen. Nach erfolgreicher Initialisierung wechselt der Aktor in das 
 Verhalten \texttt{Initialized}, in dem er regulär auf weitere fachliche Nachrichten reagieren kann.
 
 Empfängt der Aktor vor Abschluss der Initialisierung eine andere Nachricht, wird er passiviert, um unnötige 
-Ressourcenbelegung zu vermeiden. Dies erfolgt über einen \texttt{CommandAny}-Handler, der nicht behandelte 
-Nachrichten protokolliert und gleichzeitig die Passivierung der Shard-Entity anstößt.
+Ressourcenbelegung zu vermeiden. Dies erfolgt über den generischen Nachrichtenhandler \texttt{CommandAny}, 
+der für nicht explizit definierte Nachrichtentypen zuständig ist, die empfangenen Nachrichten protokolliert 
+und gleichzeitig die Passivierung der zugehörigen Entität innerhalb der ShardRegion anstößt.
 
 \begin{program}[H]
 \caption{Auszug aus dem DriverActorPersistent}
@@ -699,14 +726,17 @@ private void Uninitialized()
             {
                 _state.Apply(evt);
                 _logger.Info(\$"Initialized driver {_state.ToDriverInfoString()}");
-                Sender.Tell(new Status.Success(CreatedDriverMessage.Success(_state.Key)));
+                Sender.Tell(
+                    new Status.Success(CreatedDriverMessage.Success(_state.Key)));
                 Become(Initialized);
             }
             catch (ArgumentNullException ex)
             {
-                _logger.Error(ex, "Failed to initialize driver with message: {Message}", m);
+                _logger.Error(ex, 
+                        "Failed to initialize driver with message: {Message}", m);
                 Sender.Tell(new Status.Failure(ex));
-                Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage(ex.Message));
+                Context.System.PubSub().Api.Publish(
+                        new NotifyStatusFailureMessage(ex.Message));
             }
         });
     });
@@ -716,11 +746,13 @@ private void Uninitialized()
     CommandAny(msg =>
     {
         var entityId = Self.Path.Name;
-        _logger.Warning(\$"Received {msg.GetType().Name} before initialization for entity {entityId}. Passivating.");
+        _logger.Warning(\$"Received {msg.GetType().Name} before initialization 
+                            for entity {entityId}. Passivating.");
 
         Sender.Tell(new NotInitializedMessage(entityId));
         Context.Parent.Tell(new Passivate(new StopEntity()));
-        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage("DriverActor was not init"));
+        Context.System.PubSub().Api.Publish(
+                    new NotifyStatusFailureMessage("DriverActor was not init"));
     });   
 }
 \end{CsCode}
@@ -741,7 +773,10 @@ private void Initialized()
 {
     Command<UpdateTelemetryMessage>(m =>
     {
-        _logger.Debug("Telemetry: {Id} speed={Speed} t={Ts:o}", _state.Key, m.Speed, m.TimestampUtc);
+        _logger.Debug("Telemetry: {Id} speed={Speed} t={Ts:o}", 
+                        _state.Key, 
+                        m.Speed, 
+                        m.TimestampUtc);
         PersistAndApply(m);
     });
 
@@ -754,9 +789,13 @@ private void PersistAndApply(IHasDriverId element)
     {
         Sender.Tell(
             new Status.Failure(
-                new DriverInShardNotFoundException(element.Key, \$"Key is not {_state.Key} or initialized")));
+                new DriverInShardNotFoundException(
+                        element.Key, 
+                        \$"Key is not {_state.Key} or initialized")));
 
-        Context.System.PubSub().Api.Publish(new NotifyStatusFailureMessage(\$"Key is not {_state.Key} or initialized"));
+        Context.System.PubSub().Api.Publish(
+                    new NotifyStatusFailureMessage(
+                        \$"Key is not {_state.Key} or initialized"));
         return;
     }
 
@@ -786,7 +825,9 @@ private void CreateSnapshot()
 {
     if (LastSequenceNr % 10 == 0)
     {
-        _logger.Debug("Creating snapshot for {Pid} at seqNr {Seq}", PersistenceId, LastSequenceNr);
+        _logger.Debug("Creating snapshot for {Pid} at seqNr {Seq}", 
+                        PersistenceId, 
+                        LastSequenceNr);
         SaveSnapshot(_state.CopyState());
     }
 }
@@ -808,11 +849,11 @@ bestehende Knoten ausfallen, und ermöglicht somit eine robuste Wiederherstellun
 \subsection*{Zusammenfassung}
 
 Der \texttt{DriverActorPersistent} kombiniert persistente Ereignisverarbeitung mit einem klar strukturierten, 
-zustandsabhängigen Aktormodell innerhalb einer \texttt{ShardRegion}. Während des Recoverys werden sowohl Snapshots als 
-auch alle nachfolgenden Ereignisse rekonstruiert, wodurch ein konsistenter Fahrerzustand auch nach Ausfällen oder 
-Rebalancing gewährleistet wird. Durch das Wechseln zwischen den Zuständen \texttt{Uninitialized} und \texttt{Initialized} 
-wird sichergestellt, dass nur vollständig initialisierte Entities fachliche Nachrichten verarbeiten. Alle Zustandsänderungen 
-werden über \texttt{PersistAndApply} als Ereignisse gespeichert und optional mittels periodischer Snapshots ergänzt. Damit 
+zustandsabhängigen Aktormodell innerhalb einer \texttt{ShardRegion}. Im Recovery-Prozess werden sowohl Snapshots 
+als auch nachfolgende Ereignisse rekonstruiert, wodurch ein konsistenter Fahrerzustand auch nach Ausfällen oder 
+Rebalancing gewährleistet wird. Durch das Wechseln zwischen den Zuständen \emph{Uninitialized} und \emph{Initialized} 
+wird sichergestellt, dass nur vollständig initialisierte Entitäten fachliche Nachrichten verarbeiten. Alle Zustandsänderungen 
+werden über \texttt{PersistAndApply} als Ereignisse gespeichert und optional durch periodische Snapshots ergänzt. Damit 
 erfüllt der Aktor die Anforderungen an ein fehlertolerantes, verteiltes und deterministisch rekonstruierbares 
 Fahrermanagement im Cluster.
 
@@ -828,16 +869,18 @@ Damit ein Aktor Nachrichten über den Mediator empfangen kann, muss er sich mit 
 implementiert, die die Anmeldung beim Mediator übernimmt. Alle Aktoren, die Nachrichten über ein Topic 
 empfangen sollen, erben von dieser Basisklasse.
 
-Während der Anmeldephase werden eingehende Nachrichten zunächst gestasht, bis eine Bestätigung
-(\texttt{SubscribeAck}) des \texttt{DistributedPubSub}-Mediators eingetroffen ist. Erst danach wird das
-eigentliche Verhalten des Aktors aktiviert und die gestashten Nachrichten werden verarbeitet. Um zusätzlich
-Gruppenkommunikation zu unterstützen, erfolgt neben der Anmeldung am Topic eine weitere Anmeldung mit einer
-generierten Gruppen-ID. Dadurch können mehrere Aktoren dieselben Nachrichten erhalten, wenn sie mit derselben
-Gruppen-ID registriert sind.
+Während der Anmeldephase werden eingehende Nachrichten zunächst zwischengespeichert, bis eine Bestätigung
+(\texttt{SubscribeAck}) des \texttt{DistributedPubSub}-Mediators eingetroffen ist. Erst danach wird das 
+eigentliche Verhalten des Aktors aktiviert und die zwischengespeicherten Nachrichten werden verarbeitet. 
+Um zusätzlich Gruppenkommunikation zu unterstützen, erfolgt neben der Anmeldung am Topic eine weitere Anmeldung 
+mit einer generierten Gruppen-ID. Dadurch können mehrere Aktoren dieselben Nachrichten erhalten, wenn sie mit 
+derselben Gruppen-ID registriert sind.
 
 \begin{program}[H]
 \caption{Auszug aus der Basisklasse für PubSub-Empfänger}
 \begin{CsCode}
+private PubSubMember _member;
+
 protected override void PreStart()
 {
     _pubSubActorRef = DistributedPubSub.Get(Context.System).Mediator;
@@ -848,14 +891,16 @@ protected override void PreStart()
     _logger.Info(\$"Mediator is trying to connected to topic {_member.ToStr()}");
 
     _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self));
-    _pubSubActorRef.Tell(new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
+    _pubSubActorRef.Tell(
+        new Subscribe(_member.ToStr(), Self, GenerateGroupId(_member)));
 }
 \end{CsCode}
 \end{program}
 
 Nach der Anmeldung wird auf die Bestätigung durch den Mediator gewartet. Solange diese Bestätigung noch nicht 
-eingetroffen ist, werden alle Nachrichten gestasht. Sobald die erwartete Anzahl an \texttt{SubscribeAck}-Nachrichten 
-empfangen wurde, werden alle gesammelten Nachrichten entstapelt und das eigentliche Verhalten des Aktors aktiviert.
+eingetroffen ist, werden alle eingehenden Nachrichten zunächst zwischengespeichert. Sobald die erwartete Anzahl an 
+\texttt{SubscribeAck}-Nachrichten empfangen wurde, werden die zwischengespeicherten Nachrichten verarbeitet und das 
+eigentliche Verhalten des Aktors aktiviert.
 
 \begin{program}[H]
 \caption{Auszug aus der Basisklasse für PubSub-Empfänger}
@@ -864,7 +909,8 @@ private void HandleAckSub()
 {
     Receive<SubscribeAck>(msg =>
     {
-        _logger.Info(\$"Grab Ack for {msg.Subscribe.Topic} with group ({msg.Subscribe.Group})");
+        _logger.Info(\$"Grab Ack for {msg.Subscribe.Topic} with 
+                        group ({msg.Subscribe.Group})");
 
         Become(() =>
         {
@@ -907,11 +953,12 @@ Context.PubSub().Backend.Publish(new NotifyDriverStateMessage(msg.Key, msg.State
 
 \section{Cluster-Steuerung und Fehlertoleranz}
 
-Die Steuerung der Clusterverfügbarkeit und das Zusammenspiel zwischen ShardRegion und Ingress-Komponenten werden durch 
-eine explizite Koordinationsschicht realisiert. Diese Schicht besteht im Wesentlichen aus dem \texttt{ClusterCoordinator}, 
-dem \texttt{ShardListener}, dem \texttt{IngressListener} sowie einem \texttt{ClusterEventListener}. Ziel ist es, 
-den aktuellen Zustand der relevanten Clusterrollen (Backends und Ingress-Knoten) zu überwachen und darauf aufbauend die 
-Erreichbarkeit der ShardRegion gegenüber dem Ingress-Datenstrom zu steuern.
+Die Steuerung der Clusterverfügbarkeit sowie das Zusammenspiel zwischen \texttt{ShardRegion} und den 
+Ingress-Komponenten werden durch eine explizite Koordinationsschicht realisiert. Zu dieser Schicht 
+gehören insbesondere die Aktoren \texttt{ClusterCoordinator}, \texttt{Shard\-Listener}, 
+\texttt{Ingress\-Listener} und \texttt{Cluster\-Event\-Listener}. Ziel ist es, den aktuellen Zustand der 
+relevanten Clusterrollen (Backend- und Ingress-Knoten) zu überwachen und darauf aufbauend die 
+Erreichbarkeit der \texttt{ShardRegion} gegenüber dem Ingress-Datenstrom zu steuern.
 
 \subsection{ClusterCoordinator}
 
@@ -1007,7 +1054,7 @@ per Publish-Subscribe an alle registrierten Ingress-Knoten weitergegeben, um der
 Receive<IngressConnectionCanActivated>(msg =>
 {
     var isOnline = msg.IsShardOnline ? "online" : "offline";
-    Logger.Debug(\$"Auto send to shard is {isOnline} and ingress will be notified!");
+    Logger.Debug(\$"Auto send to shard is {isOnline} and ingress will be notified");
     Context.PubSub().Ingress.Publish(new NotifyIngressShardIsOnline(msg.IsShardOnline));
 });
 
@@ -1045,7 +1092,8 @@ Receive<ClusterEvent.MemberUp>(u =>
 
 Receive<ClusterEvent.MemberRemoved>(r =>
 {
-    _logger.Info(\$"Cluster Member is Removed {r}, {string.Join(',', r.Member.Roles)}");
+    _logger.Info(\$"Cluster Member is Removed {r}, 
+                    {string.Join(',', r.Member.Roles)}");
     foreach (var s in r.Member.Roles)
         Broadcast(ClusterMemberExtension.Parse(s),
                   new DecreaseClusterMember(r.Member.Address));
@@ -1111,7 +1159,7 @@ Die Oberfläche ist in mehrere Bereiche gegliedert:
         die Anzahl aktiver Knoten, Shards und Entities sowie den aktuell verwendeten Pipeline-Modus.
   \item \textbf{Race-Informationen}: Anzeige kontextbezogener Domäneninformationen, etwa zur aktuell 
         ausgewählten Rennstrecke (Location, Country).
-  \item \textbf{Controls}: Liste der verfügbaren Tastaturbefehle (z.\,B. Verbindungsaufbau, Start/Stop 
+  \item \textbf{Controls}: Liste der verfügbaren Tastaturbefehle (z.\,B. Verbindungsaufbau, Start und Stop 
         von Messungen, Wechsel des Rennens oder der Pipeline-Konfiguration).
 \end{itemize}
 
@@ -1158,9 +1206,9 @@ Die Fehlertoleranz wird durch die in Akka.NET integrierten Mechanismen zur Clust
 nicht mehr, erkennt das Gossip-Protokoll den Zustand und markiert den betreffenden Knoten zunächst als \texttt{Unreachable}. Persistiert dieser Zustand, 
 wird der Knoten als \texttt{MemberRemoved} eingestuft und aus dem Cluster entfernt.
 
-Der \texttt{ClusterEventListener} empfängt diese Ereignisse und informiert \texttt{ShardListener} und \texttt{IngressListener} über die entsprechenden 
-Änderungen. Der \texttt{ShardListener} aktualisiert daraufhin seine interne Sicht auf die Backend-Knoten und leitet diese Information an den 
-\texttt{ClusterCoordinator} weiter. Dieser informiert anschließend den \texttt{IngressListener}, der wiederum die Ingress-Knoten über die neue 
+Der \texttt{ClusterEventListener} empfängt diese Ereignisse und informiert \texttt{Shard\-Listener} und \texttt{Ingress\-Listener} über die entsprechenden 
+Änderungen. Der \texttt{Shard\-Listener} aktualisiert daraufhin seine interne Sicht auf die Backend-Knoten und leitet diese Information an den 
+\texttt{Cluster\-Coordinator} weiter. Dieser informiert anschließend den \texttt{Ingress\-Listener}, der wiederum die Ingress-Knoten über die neue 
 Erreichbarkeitssituation der ShardRegion benachrichtigt. Solange keine funktionsfähige ShardRegion verfügbar ist, senden die Ingress-Knoten 
 keine Daten an den Cluster, wodurch inkonsistente Zustände und Nachrichtenverluste verhindert werden.
 
