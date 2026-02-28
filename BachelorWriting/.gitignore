@@ -45,3 +45,4 @@ main.pdf
 .bak 
 .mtc
 build/
+!main.pdf
